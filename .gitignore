@@ -1,37 +1,84 @@
-# Dependencies
-node_modules/
-.venv/
-venv/
+# Python
 __pycache__/
 *.py[cod]
-
-# Builds and caches
-dist/
-build/
-.vite/
+*$py.class
+*.so
+.Python
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.coverage.*
 coverage/
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.venv/
+venv/
+env/
+ENV/
+__pypackages__/
+.pdm-python
+.pdm-build/
+.pixi/
 
-# Environment
-.env
-.env.*
-!.env.example
-
-# Logs
-*.log
+# Node / frontend
+node_modules/
+dist/
+build/
+.vite/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Packaging and generated output
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg
+MANIFEST
+*.manifest
+*.spec
+
+# Databases and services
+db.sqlite3
+db.sqlite3-journal
+*.rdb
+*.aof
+*.pid
+celerybeat-schedule
+celerybeat.pid
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+.envrc
+local_settings.py
+.streamlit/secrets.toml
+
+# Docs and notebooks
+docs/_build/
+/site
+.ipynb_checkpoints/
 
 # Editors and OS
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+tempCodeRunnerFile.py
 
 # Local Codex workspace scratch/output
 work/

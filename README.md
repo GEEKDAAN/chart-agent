@@ -1,5 +1,7 @@
 # chart-agent
 
+图表解析 Agent，根据用户意图生成和编辑目标图表 UI。
+
 Conversational chart generation and editing system built around a controlled `ChartSpec` protocol.
 
 ## Goal
