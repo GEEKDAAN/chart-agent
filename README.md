@@ -32,6 +32,10 @@ frontend/  React app, CopilotKit integration, ChartSpec runtime, and ECharts ren
 docs/      Architecture notes and product design documents
 ```
 
+## Change Log
+
+Project changes are recorded in `CHANGELOG.md`. Follow the module-grouped format there when adding new version entries.
+
 ## MVP Scope
 
 - Single-chart creation
