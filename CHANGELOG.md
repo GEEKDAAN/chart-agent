@@ -1,10 +1,10 @@
-# Changelog
+# 更新日志
 
-This file records meaningful changes for each project version.
+本文档用于记录项目每个版本的重要变更。
 
-## Maintenance Format
+## 维护格式
 
-Use one entry per version. Keep the newest version at the top.
+每个版本使用一个独立条目，最新版本放在最上方。
 
 ```md
 ## [0.2.0] - YYYY-MM-DD
@@ -23,38 +23,44 @@ Use one entry per version. Keep the newest version at the top.
   1. ...
 ```
 
-Only include sections that changed in that version. Prefer clear user-facing or engineering-impact descriptions instead of raw commit messages.
+只保留本版本实际发生变更的模块。描述应说明用户可感知的变化或工程影响，不直接堆叠原始 commit message。
 
-## Versioning Rules
+## 版本规则
 
-This project uses `major.minor.patch`:
+项目采用 `major.minor.patch` 版本格式：
 
-- New independent module or capability: increment `minor`, for example `0.1.0 -> 0.2.0`.
-- Change or improve existing behavior: increment `patch`, for example `0.2.0 -> 0.2.1`.
-- Breaking protocol, API, or architecture change: increment `major`, for example `0.9.0 -> 1.0.0`.
+- 新增独立模块或能力：`minor +1`，例如 `0.1.0 -> 0.2.0`。
+- 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
+- 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
+
+## [0.1.2] - 2026-06-09
+
+- 【文档】
+  1. 将更新日志维护说明和历史记录统一调整为中文。
+  2. 将 `README.md` 中的更新日志说明调整为中文。
 
 ## [0.1.1] - 2026-06-09
 
 - 【文档】
-  1. Added `CHANGELOG.md` as the project change record.
-  2. Defined the changelog maintenance format and versioning rules.
-  3. Added a README pointer to the changelog maintenance process.
+  1. 新增 `CHANGELOG.md` 作为项目更新记录。
+  2. 定义更新日志维护格式和版本规则。
+  3. 在 `README.md` 中增加更新日志维护说明。
 
 ## [0.1.0] - 2026-06-09
 
 - 【前端】
-  1. Initialized the `frontend/` directory.
-  2. Reserved the frontend workspace for React, CopilotKit, ChartSpec runtime, and ECharts rendering.
+  1. 初始化 `frontend/` 目录。
+  2. 预留 React、CopilotKit、ChartSpec runtime 和 ECharts 渲染相关的前端工作区。
 
 - 【后端】
-  1. Initialized the `backend/` directory.
-  2. Reserved the backend workspace for FastAPI, LangGraph Agent, schemas, validators, and metric tools.
+  1. 初始化 `backend/` 目录。
+  2. 预留 FastAPI、LangGraph Agent、schema、validator 和指标工具相关的后端工作区。
 
 - 【文档】
-  1. Added project overview and MVP scope in `README.md`.
-  2. Added architecture notes in `docs/architecture.md`.
-  3. Added the original chart agent design document in `docs/chart-agent-design.md`.
+  1. 在 `README.md` 中添加项目概览和 MVP 范围。
+  2. 在 `docs/architecture.md` 中添加架构说明。
+  3. 添加原始图表 Agent 设计文档 `docs/chart-agent-design.md`。
 
 - 【工程】
-  1. Initialized the Git repository and connected it to the GitHub remote.
-  2. Added `.gitignore` rules for Python, Node, editor files, and local workspace artifacts.
+  1. 初始化 Git 仓库并连接 GitHub 远程仓库。
+  2. 添加 `.gitignore`，覆盖 Python、Node、编辑器文件和本地工作区产物。

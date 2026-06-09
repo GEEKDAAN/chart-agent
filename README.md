@@ -32,9 +32,9 @@ frontend/  React app, CopilotKit integration, ChartSpec runtime, and ECharts ren
 docs/      Architecture notes and product design documents
 ```
 
-## Change Log
+## 更新日志
 
-Project changes are recorded in `CHANGELOG.md`. Follow the module-grouped format there when adding new version entries.
+项目变更记录在 `CHANGELOG.md` 中。新增版本记录时，请遵循其中定义的中文模块分组格式。
 
 ## MVP Scope
 
