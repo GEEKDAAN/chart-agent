@@ -58,6 +58,13 @@ textarea {
   background: #fff;
 }
 
+.topbar-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .chart-canvas,
 .empty-state,
 .table-wrap {

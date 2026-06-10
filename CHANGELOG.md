@@ -33,6 +33,19 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.5.0] - 2026-06-10
+
+- 【前端】
+  1. 新增可选 CopilotKit 侧边栏组件。
+  2. 新增 `VITE_COPILOT_RUNTIME_URL` 配置，未配置时默认不加载侧边栏。
+  3. 将 CopilotKit 代码 lazy loading，保留现有普通输入框作为稳定 fallback。
+  4. 新增 `frontend/.env.example`。
+  5. 更新前端版本号为 `0.5.0`。
+
+- 【文档】
+  1. 更新根 `README.md`，标记 CopilotKit 前端侧边栏为可选能力。
+  2. 更新 `frontend/README.md`，补充 CopilotKit 配置说明。
+
 ## [0.4.1] - 2026-06-10
 
 - 【后端】

@@ -1,9 +1,14 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, lazy, useState } from "react";
 
 import { ChartPanel } from "./components/ChartPanel";
 import { sendChartMessage } from "./lib/api";
 import { applyChartAction } from "./lib/chartSpec";
+import { isCopilotEnabled } from "./lib/config";
 import type { ChartSpec } from "./types/chart";
+
+const CopilotKitPanel = lazy(() =>
+  import("./components/CopilotKitPanel").then((module) => ({ default: module.CopilotKitPanel }))
+);
 
 const QUICK_PROMPTS = [
   "看最近30天各渠道销售额",
@@ -50,7 +55,10 @@ export function App() {
             <h1>chart-agent</h1>
             <p>基于受控 ChartSpec 协议的对话式图表生成 MVP</p>
           </div>
-          <span className="status-pill">v0.2.0</span>
+          <div className="topbar-badges">
+            <span className="status-pill">v0.5.0</span>
+            <span className="status-pill">{isCopilotEnabled ? "CopilotKit 已启用" : "CopilotKit 未配置"}</span>
+          </div>
         </header>
 
         <ChartPanel chart={chart} />
@@ -77,6 +85,12 @@ export function App() {
           </button>
         </form>
       </aside>
+
+      {isCopilotEnabled ? (
+        <Suspense fallback={null}>
+          <CopilotKitPanel chart={chart} />
+        </Suspense>
+      ) : null}
     </main>
   );
 }
