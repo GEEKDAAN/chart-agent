@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers.chart_agent import router as chart_agent_router
 from app.routers.copilotkit import router as copilotkit_router
 
-app = FastAPI(title="chart-agent API", version="0.9.0")
+app = FastAPI(title="chart-agent API", version="0.9.1")
 
 app.add_middleware(
     CORSMiddleware,

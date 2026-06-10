@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef } from "react";
-import { CopilotKit, useCopilotMessagesContext } from "@copilotkit/react-core";
+import { CopilotKit, useCopilotMessagesContext, useCopilotReadable } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
 
 import { copilotRuntimeUrl, isCopilotEnabled } from "../lib/config";
+import {
+  installCopilotRuntimeContextPatch,
+  syncChartAgentRuntimeContext,
+  type ChartAgentRuntimeContext
+} from "../lib/copilotRuntimeContext";
 import type { ChartAgentAction, ChartSpec } from "../types/chart";
 
 type CopilotKitPanelProps = {
@@ -20,7 +25,7 @@ const suggestions = [
 ];
 
 export function CopilotKitPanel({ chart, onApplyAction, onApplyError }: CopilotKitPanelProps) {
-  const properties = useMemo(
+  const runtimeContext = useMemo<ChartAgentRuntimeContext>(
     () => ({
       currentChart: chart,
       pageContext: { source: "copilotkit" },
@@ -34,7 +39,8 @@ export function CopilotKitPanel({ chart, onApplyAction, onApplyError }: CopilotK
   }
 
   return (
-    <CopilotKit runtimeUrl={copilotRuntimeUrl} properties={properties}>
+    <CopilotKit runtimeUrl={copilotRuntimeUrl} properties={runtimeContext}>
+      <CopilotRuntimeContextBridge context={runtimeContext} />
       <CopilotActionBridge onApplyAction={onApplyAction} onApplyError={onApplyError} />
       <CopilotSidebar
         defaultOpen={false}
@@ -47,6 +53,23 @@ export function CopilotKitPanel({ chart, onApplyAction, onApplyError }: CopilotK
       />
     </CopilotKit>
   );
+}
+
+function CopilotRuntimeContextBridge({ context }: { context: ChartAgentRuntimeContext }) {
+  useEffect(() => {
+    syncChartAgentRuntimeContext(context);
+    installCopilotRuntimeContextPatch(copilotRuntimeUrl);
+  }, [context]);
+
+  useCopilotReadable(
+    {
+      description: "chart-agent 当前图表上下文",
+      value: context
+    },
+    [context]
+  );
+
+  return null;
 }
 
 function CopilotActionBridge({

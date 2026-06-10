@@ -33,6 +33,19 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.9.1] - 2026-06-10
+
+- 【前端】
+  1. 新增 CopilotKit Runtime 上下文桥接，将当前图表、页面上下文和用户上下文同步到 Runtime 请求体。
+  2. 将当前图表上下文注册为 CopilotKit readable context，提升侧边栏对当前图表状态的可见性。
+  3. 更新前端版本号和界面版本标识为 `0.9.1`。
+- 【后端】
+  1. 加固 `/copilotkit` 上下文解析，兼容 `variables.properties`、`data.properties`、`metadata.chartAgentContext` 等多种请求结构。
+  2. 支持从消息隐藏标记中解析 chart-agent 上下文，作为 Runtime 请求结构变化时的兜底路径。
+  3. 更新 FastAPI 应用版本为 `0.9.1`。
+- 【测试】
+  1. 新增 CopilotKit Runtime 上下文兼容测试，覆盖 metadata 和 data properties 两种上下文传递路径。
+
 ## [0.9.0] - 2026-06-10
 
 - 【后端】

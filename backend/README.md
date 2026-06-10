@@ -78,7 +78,16 @@ OPENAI_BASE_URL=https://ai.allrealai.com/v1
 - `loadAgentState`
 - `generateCopilotResponse`
 
-`generateCopilotResponse` 会读取 CopilotKit 消息中的最后一条用户文本，并结合前端通过 `properties.currentChart` 传入的当前图表上下文，转接到现有 `ChartAgent` workflow。
+`generateCopilotResponse` 会读取 CopilotKit 消息中的最后一条用户文本，并结合前端传入的当前图表上下文，转接到现有 `ChartAgent` workflow。
+
+当前上下文解析会兼容多个位置：
+
+- `variables.properties`
+- `variables.data.properties`
+- `variables.data.metadata.chartAgentContext`
+- `variables.data.metadata.properties`
+- `variables.data.frontend.chartAgentContext`
+- 消息中的隐藏 `chart-agent-context` 标记
 
 当前版本会在 assistant 文本响应中附带不可见的 `ChartAgentAction` 标记，前端会解析该标记并自动应用图表变更。CopilotKit 流式响应会在后续版本接入。
 

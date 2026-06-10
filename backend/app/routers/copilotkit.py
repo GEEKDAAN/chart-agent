@@ -78,7 +78,7 @@ def _load_agent_state(variables: dict[str, Any]) -> dict[str, Any]:
 
 def _generate_copilot_response(variables: dict[str, Any]) -> dict[str, Any]:
     data = variables.get("data") or {}
-    properties = variables.get("properties") or {}
+    properties = _resolve_runtime_properties(variables)
     thread_id = data.get("threadId") or f"copilotkit-{uuid4()}"
     run_id = data.get("runId") or f"run-{uuid4()}"
     parent_message_id = _last_user_message_id(data.get("messages") or [])
@@ -137,12 +137,60 @@ def _to_chart_agent_request(
     )
 
 
+def _resolve_runtime_properties(variables: dict[str, Any]) -> dict[str, Any]:
+    data = variables.get("data") or {}
+    metadata = data.get("metadata") or {}
+    candidates = [
+        variables.get("properties"),
+        data.get("properties"),
+        metadata.get("chartAgentContext"),
+        metadata.get("properties"),
+        (data.get("frontend") or {}).get("chartAgentContext"),
+        _extract_context_from_messages(data.get("messages") or []),
+    ]
+
+    properties: dict[str, Any] = {}
+    for candidate in candidates:
+        if isinstance(candidate, dict):
+            properties.update(candidate)
+    return properties
+
+
 def _last_user_message_content(messages: list[dict[str, Any]]) -> str:
     for message in reversed(messages):
         text_message = message.get("textMessage")
         if text_message and text_message.get("role") == "user":
             return str(text_message.get("content") or "").strip()
     return ""
+
+
+def _extract_context_from_messages(messages: list[dict[str, Any]]) -> dict[str, Any]:
+    for message in reversed(messages):
+        text_message = message.get("textMessage")
+        content = text_message.get("content") if text_message else None
+        if not isinstance(content, str):
+            continue
+        marker = _extract_json_marker(content, "chart-agent-context")
+        if marker:
+            return marker
+    return {}
+
+
+def _extract_json_marker(content: str, marker_name: str) -> dict[str, Any] | None:
+    prefix = f"<!-- {marker_name}:"
+    start = content.find(prefix)
+    if start < 0:
+        return None
+    start += len(prefix)
+    end = content.find(" -->", start)
+    if end < 0:
+        return None
+    try:
+        decoded = base64.b64decode(content[start:end]).decode("utf-8")
+        value = json.loads(decoded)
+    except (ValueError, json.JSONDecodeError):
+        return None
+    return value if isinstance(value, dict) else None
 
 
 def _last_user_message_id(messages: list[dict[str, Any]]) -> str | None:
