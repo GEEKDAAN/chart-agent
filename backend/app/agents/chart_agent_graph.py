@@ -16,6 +16,7 @@ from app.schemas.chart import (
     Intent,
 )
 from app.services.llm_actions import generate_llm_action
+from app.services.data_requirements import parse_data_requirements
 from app.services.metrics import get_metric_catalog, query_metrics, validate_data_access
 
 QueryMetrics = Callable[[list[str], list[str], dict[str, Any] | None, dict[str, str] | None, int], ChartData]
@@ -95,11 +96,11 @@ def classify_intent(message: str) -> Intent:
         return "explain_chart"
     if any(keyword in normalized for keyword in ["红色", "颜色", "蓝色", "绿色"]):
         return "update_style"
-    if any(keyword in normalized for keyword in ["利润率", "订单数", "加一列", "新增指标"]):
+    if any(keyword in normalized for keyword in ["加一列", "新增指标", "加上", "增加指标"]):
         return "update_data"
     if any(keyword in normalized for keyword in ["折线", "柱状", "饼图", "表格", "换成"]):
         return "change_chart_type"
-    if any(keyword in normalized for keyword in ["看", "生成", "统计", "销售额", "趋势"]):
+    if any(keyword in normalized for keyword in ["看", "生成", "统计", "销售额", "订单数", "利润率", "趋势"]):
         return "create_chart"
     return "unknown"
 
@@ -192,23 +193,11 @@ def respond_node(state: ChartAgentState) -> ChartAgentState:
 
 
 def _resolve_data_requirements(state: ChartAgentState) -> DataRequirements:
-    intent = state.get("intent", "unknown")
-    message = state["user_message"]
-    if intent == "create_chart":
-        dimension = "date" if "趋势" in message or "折线" in message else "channel"
-        return {"metrics": ["sales"], "dimensions": [dimension], "filters": {}, "time_range": None}
-
-    if intent == "update_data":
-        current = _require_current_chart(state)
-        metrics = ["sales"]
-        if "利润率" in message:
-            metrics.append("profit_rate")
-        if "订单数" in message:
-            metrics.append("orders")
-        dimension = current.encoding.x or current.encoding.category or "channel"
-        return {"metrics": metrics, "dimensions": [dimension], "filters": {}, "time_range": None}
-
-    raise ValueError("当前意图不需要数据查询。")
+    return parse_data_requirements(
+        message=state["user_message"],
+        intent=state.get("intent", "unknown"),
+        current_chart=state.get("current_chart"),
+    )
 
 
 def _create_chart_action(state: ChartAgentState) -> ChartAgentAction:
@@ -217,16 +206,18 @@ def _create_chart_action(state: ChartAgentState) -> ChartAgentAction:
     if not requirements or not data:
         raise ValueError("创建图表缺少查询结果。")
     dimension = requirements["dimensions"][0]
+    metric = requirements["metrics"][0]
     chart_type = "line" if dimension == "date" else "bar"
+    metric_label = _metric_label(metric)
     chart = ChartSpec(
-        id="chart_demo_sales",
-        title="最近 30 天销售额",
+        id=f"chart_demo_{metric}",
+        title=f"{_dimension_label(dimension)}{metric_label}",
         chartType=chart_type,
         data=data,
-        encoding=ChartEncoding(x=dimension, y="sales"),
+        encoding=ChartEncoding(x=dimension, y=metric),
         style=ChartStyle(showLegend=False, showTooltip=True),
     )
-    return ChartAgentAction(type="create_chart", chart=chart, message="已生成最近 30 天销售额图表。")
+    return ChartAgentAction(type="create_chart", chart=chart, message=f"已生成{metric_label}图表。")
 
 
 def _update_style_action(state: ChartAgentState) -> ChartAgentAction:
@@ -329,6 +320,14 @@ def _resolve_chart_type(message: str) -> str:
 
 def _chart_type_label(chart_type: str) -> str:
     return {"bar": "柱状图", "line": "折线图", "pie": "饼图", "table": "表格"}[chart_type]
+
+
+def _metric_label(metric: str) -> str:
+    return {"sales": "销售额", "orders": "订单数", "profit_rate": "利润率"}.get(metric, metric)
+
+
+def _dimension_label(dimension: str) -> str:
+    return {"date": "日期趋势", "region": "各地区", "channel": "各渠道"}.get(dimension, "")
 
 
 def _with_error(state: ChartAgentState, message: str) -> ChartAgentState:

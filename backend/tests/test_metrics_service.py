@@ -34,6 +34,12 @@ def test_query_metrics_filters_and_limits_rows():
     assert data.rows == [{"channel": "抖音", "sales": 168000, "orders": 1240}]
 
 
+def test_query_metrics_filters_channel_rows_by_region():
+    data = query_metrics(["sales"], ["channel"], {"region": "华东"}, None, 10)
+
+    assert [row["channel"] for row in data.rows] == ["抖音", "天猫"]
+
+
 def test_query_metrics_rejects_unknown_dimension():
     with pytest.raises(ValueError, match="不支持"):
         query_metrics(["sales"], ["unknown_dimension"])
@@ -43,6 +49,14 @@ def test_query_metrics_uses_time_range_end_for_date_rows():
     data = query_metrics(["sales"], ["date"], {}, {"end": "2026-06-10"}, 10)
 
     assert data.rows[0]["date"] == "2026-06-04"
+    assert data.rows[-1]["date"] == "2026-06-10"
+
+
+def test_query_metrics_uses_time_range_start_and_end_for_date_rows():
+    data = query_metrics(["sales"], ["date"], {}, {"start": "2026-06-01", "end": "2026-06-10"}, 20)
+
+    assert len(data.rows) == 10
+    assert data.rows[0]["date"] == "2026-06-01"
     assert data.rows[-1]["date"] == "2026-06-10"
 
 

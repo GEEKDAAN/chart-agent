@@ -75,6 +75,60 @@ def test_llm_failure_falls_back_to_deterministic_action():
     assert final_state["chart_action"].patch.style.colors == {"抖音": "#ef4444"}
 
 
+def test_create_chart_parses_order_metric_and_channel_dimension():
+    captured = {}
+
+    from app.services.metrics import query_metrics
+
+    def query_metrics_spy(metrics, dimensions, filters, time_range, limit):
+        captured.update(
+            {
+                "metrics": metrics,
+                "dimensions": dimensions,
+                "filters": filters,
+                "time_range": time_range,
+                "limit": limit,
+            }
+        )
+        return query_metrics(metrics, dimensions, filters, time_range, limit)
+
+    graph = build_chart_agent_graph(query_metrics_fn=query_metrics_spy)
+    final_state = graph.invoke(_base_state("看各渠道订单数"))
+
+    assert final_state["intent"] == "create_chart"
+    assert captured["metrics"] == ["orders"]
+    assert captured["dimensions"] == ["channel"]
+    assert captured["filters"] == {}
+    assert final_state["chart_action"].type == "create_chart"
+
+
+def test_create_chart_parses_recent_trend_time_range():
+    captured = {}
+
+    from app.services.metrics import query_metrics
+
+    def query_metrics_spy(metrics, dimensions, filters, time_range, limit):
+        captured.update(
+            {
+                "metrics": metrics,
+                "dimensions": dimensions,
+                "filters": filters,
+                "time_range": time_range,
+                "limit": limit,
+            }
+        )
+        return query_metrics(metrics, dimensions, filters, time_range, limit)
+
+    graph = build_chart_agent_graph(query_metrics_fn=query_metrics_spy)
+    final_state = graph.invoke(_base_state("看最近7天销售额趋势"))
+
+    assert captured["metrics"] == ["sales"]
+    assert captured["dimensions"] == ["date"]
+    assert captured["time_range"] is not None
+    assert len(final_state["chart_action"].chart.data.rows) == 7
+    assert final_state["chart_action"].chart.chartType == "line"
+
+
 def _create_chart(graph):
     final_state = graph.invoke(_base_state("看最近30天各渠道销售额"))
     return final_state["chart_action"].chart

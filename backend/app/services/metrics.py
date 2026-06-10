@@ -64,10 +64,10 @@ DEFAULT_METRIC_CATALOG = MetricCatalog(
 
 
 CHANNEL_ROWS = [
-    {"channel": "抖音", "sales": 168000, "orders": 1240, "profit_rate": 0.23},
-    {"channel": "小红书", "sales": 132000, "orders": 980, "profit_rate": 0.26},
-    {"channel": "微信", "sales": 98000, "orders": 760, "profit_rate": 0.19},
-    {"channel": "天猫", "sales": 186000, "orders": 1410, "profit_rate": 0.21},
+    {"channel": "抖音", "region": "华东", "sales": 168000, "orders": 1240, "profit_rate": 0.23},
+    {"channel": "小红书", "region": "华南", "sales": 132000, "orders": 980, "profit_rate": 0.26},
+    {"channel": "微信", "region": "华北", "sales": 98000, "orders": 760, "profit_rate": 0.19},
+    {"channel": "天猫", "region": "华东", "sales": 186000, "orders": 1410, "profit_rate": 0.21},
 ]
 
 REGION_ROWS = [
@@ -124,12 +124,16 @@ class MockMetricDataSource:
         metrics: Sequence[str],
         time_range: dict[str, str] | None,
     ) -> list[dict[str, Any]]:
+        start = _parse_iso_date(time_range.get("start")) if time_range else None
         end = _parse_iso_date(time_range.get("end")) if time_range else None
         current_end = end or date.today()
-        start = current_end - timedelta(days=6)
+        current_start = start or current_end - timedelta(days=6)
+        if current_start > current_end:
+            current_start = current_end
+        days = min((current_end - current_start).days + 1, 366)
         rows: list[dict[str, Any]] = []
-        for index in range(7):
-            current = start + timedelta(days=index)
+        for index in range(days):
+            current = current_start + timedelta(days=index)
             base_sales = 82000 + index * 9200
             row = {
                 "date": current.isoformat(),
@@ -213,7 +217,7 @@ def query_metrics(
 
 def _matches_filters(row: dict[str, Any], filters: dict[str, Any]) -> bool:
     for key, value in filters.items():
-        if value and row.get(key) != value:
+        if value and key in row and row.get(key) != value:
             return False
     return True
 
