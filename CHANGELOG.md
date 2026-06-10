@@ -33,6 +33,23 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.4.0] - 2026-06-10
+
+- 【后端】
+  1. 新增可选 OpenAI LLM action 生成能力。
+  2. 新增 `CHART_AGENT_LLM_MODE`、`OPENAI_API_KEY`、`OPENAI_MODEL` 配置。
+  3. 在 LangGraph `generate_action` 节点中加入 LLM 优先、确定性逻辑 fallback 的执行策略。
+  4. 新增 LLM 输出校验，确保模型输出仍然落在 `ChartAgentAction` 协议内。
+  5. 新增 `backend/.env.example` 配置示例。
+
+- 【测试】
+  1. 新增 LLM action 被采用的 workflow 测试。
+  2. 新增 LLM 异常时自动回退确定性 action 的测试。
+
+- 【文档】
+  1. 更新根 `README.md`，标记 OpenAI API 为可选能力。
+  2. 更新 `backend/README.md`，补充 LLM 配置和 fallback 行为说明。
+
 ## [0.3.0] - 2026-06-10
 
 - 【后端】

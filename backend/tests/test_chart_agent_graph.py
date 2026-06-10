@@ -1,6 +1,6 @@
 from app.agents.chart_agent_graph import build_chart_agent_graph
 from app.agents.chart_agent_state import ChartAgentState
-from app.schemas.chart import UserContext
+from app.schemas.chart import ChartAgentAction, UserContext
 
 
 def test_update_style_does_not_query_metrics():
@@ -46,11 +46,45 @@ def test_create_chart_queries_metrics_once():
     assert calls["count"] == 1
 
 
+def test_llm_action_is_used_when_valid():
+    graph = build_chart_agent_graph(
+        llm_action_fn=lambda state: ChartAgentAction(
+            type="error",
+            code="llm_generated",
+            message="LLM 已接管生成动作。",
+        )
+    )
+    state = _base_state("解释一下这个图", current_chart=None)
+
+    final_state = graph.invoke(state)
+
+    assert final_state["chart_action"].type == "error"
+    assert final_state["chart_action"].code == "llm_generated"
+
+
+def test_llm_failure_falls_back_to_deterministic_action():
+    chart = _create_chart(build_chart_agent_graph())
+
+    def failing_llm_action(state):
+        raise RuntimeError("llm unavailable")
+
+    graph = build_chart_agent_graph(llm_action_fn=failing_llm_action)
+    final_state = graph.invoke(_base_state("把抖音改成红色", current_chart=chart))
+
+    assert final_state["chart_action"].type == "update_chart"
+    assert final_state["chart_action"].patch.style.colors == {"抖音": "#ef4444"}
+
+
 def _create_chart(graph):
-    state: ChartAgentState = {
+    final_state = graph.invoke(_base_state("看最近30天各渠道销售额"))
+    return final_state["chart_action"].chart
+
+
+def _base_state(message: str, current_chart=None) -> ChartAgentState:
+    return {
         "conversation_id": "demo",
-        "user_message": "看最近30天各渠道销售额",
-        "current_chart": None,
+        "user_message": message,
+        "current_chart": current_chart,
         "page_context": {},
         "user_context": UserContext(userId="u_demo", tenantId="t_demo"),
         "data_requirements": None,
@@ -59,5 +93,3 @@ def _create_chart(graph):
         "assistant_message": "",
         "errors": [],
     }
-    final_state = graph.invoke(state)
-    return final_state["chart_action"].chart

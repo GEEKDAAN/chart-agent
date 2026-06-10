@@ -18,6 +18,7 @@
 - ECharts
 - FastAPI
 - LangGraph
+- OpenAI API（可选）
 - CopilotKit（后续接入）
 - Python 语义指标层
 
@@ -69,6 +70,7 @@ http://localhost:5173
 - 受控 `ChartSpec` 协议
 - mock 指标目录和 mock 查询服务
 - LangGraph 单 Agent workflow
+- 可选真实 LLM 结构化 action 生成
 - 非流式 JSON 响应
 - 简单对话输入框
 
@@ -78,7 +80,6 @@ http://localhost:5173
 - 图表持久化和分享
 - 复杂下钻
 - 多图联动
-- 真实 LLM 输出
 - CopilotKit 侧边栏
 - Agent 直接写 SQL
 

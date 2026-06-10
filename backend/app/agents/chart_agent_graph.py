@@ -15,9 +15,11 @@ from app.schemas.chart import (
     ChartStyle,
     Intent,
 )
+from app.services.llm_actions import generate_llm_action
 from app.services.metrics import get_metric_catalog, query_metrics, validate_data_access
 
 QueryMetrics = Callable[[list[str], list[str], dict[str, Any] | None, dict[str, str] | None, int], ChartData]
+LLMAction = Callable[[ChartAgentState], ChartAgentAction | None]
 
 
 def run_chart_agent(request: ChartAgentRequest) -> ChartAgentResponse:
@@ -47,12 +49,15 @@ def run_chart_agent(request: ChartAgentRequest) -> ChartAgentResponse:
     )
 
 
-def build_chart_agent_graph(query_metrics_fn: QueryMetrics = query_metrics):
+def build_chart_agent_graph(
+    query_metrics_fn: QueryMetrics = query_metrics,
+    llm_action_fn: LLMAction = generate_llm_action,
+):
     workflow = StateGraph(ChartAgentState)
     workflow.add_node("classify_intent", classify_intent_node)
     workflow.add_node("plan_data", plan_data_node)
     workflow.add_node("query_data", _make_query_data_node(query_metrics_fn))
-    workflow.add_node("generate_action", generate_action_node)
+    workflow.add_node("generate_action", _make_generate_action_node(llm_action_fn))
     workflow.add_node("validate_action", validate_action_node)
     workflow.add_node("respond", respond_node)
 
@@ -134,30 +139,40 @@ def _make_query_data_node(query_metrics_fn: QueryMetrics):
     return query_data_node
 
 
-def generate_action_node(state: ChartAgentState) -> ChartAgentState:
-    if state.get("errors"):
-        return {**state, "chart_action": _error_action("validation_error", state["errors"][0])}
+def _make_generate_action_node(llm_action_fn: LLMAction):
+    def generate_action_node(state: ChartAgentState) -> ChartAgentState:
+        if state.get("errors"):
+            return {**state, "chart_action": _error_action("validation_error", state["errors"][0])}
 
-    intent = state.get("intent", "unknown")
-    try:
-        if intent == "create_chart":
-            action = _create_chart_action(state)
-        elif intent == "update_style":
-            action = _update_style_action(state)
-        elif intent == "update_data":
-            action = _update_data_action(state)
-        elif intent == "change_chart_type":
-            action = _change_chart_type_action(state)
-        elif intent == "explain_chart":
-            action = _explain_chart_action(state)
-        else:
-            action = _error_action(
-                "clarification_required",
-                "我还不能确定你想创建还是修改图表，请明确指标、维度或修改目标。",
-            )
-    except ValueError as error:
-        action = _error_action("validation_error", str(error))
-    return {**state, "chart_action": action}
+        try:
+            llm_action = llm_action_fn(state)
+        except Exception:
+            llm_action = None
+        if llm_action:
+            return {**state, "chart_action": llm_action}
+
+        intent = state.get("intent", "unknown")
+        try:
+            if intent == "create_chart":
+                action = _create_chart_action(state)
+            elif intent == "update_style":
+                action = _update_style_action(state)
+            elif intent == "update_data":
+                action = _update_data_action(state)
+            elif intent == "change_chart_type":
+                action = _change_chart_type_action(state)
+            elif intent == "explain_chart":
+                action = _explain_chart_action(state)
+            else:
+                action = _error_action(
+                    "clarification_required",
+                    "我还不能确定你想创建还是修改图表，请明确指标、维度或修改目标。",
+                )
+        except ValueError as error:
+            action = _error_action("validation_error", str(error))
+        return {**state, "chart_action": action}
+
+    return generate_action_node
 
 
 def validate_action_node(state: ChartAgentState) -> ChartAgentState:

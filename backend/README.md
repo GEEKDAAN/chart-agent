@@ -17,6 +17,24 @@ classify_intent
 
 其中样式修改、图表类型切换和图表解释不会进入数据查询节点；创建图表和新增指标会通过 mock 指标服务查询数据。
 
+## LLM 配置
+
+默认关闭真实 LLM，后端使用确定性 fallback 生成 action。
+
+```bash
+CHART_AGENT_LLM_MODE=off
+```
+
+如需启用 OpenAI 结构化输出：
+
+```bash
+CHART_AGENT_LLM_MODE=openai
+OPENAI_API_KEY=你的密钥
+OPENAI_MODEL=gpt-4o-mini
+```
+
+启用后，`generate_action` 节点会先尝试调用 LLM 生成 `ChartAgentAction`。如果未配置密钥、调用失败或输出校验失败，会自动回退到确定性生成逻辑。
+
 ## 本地运行
 
 ```bash
