@@ -33,6 +33,24 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.4.1] - 2026-06-10
+
+- 【后端】
+  1. 新增 `OPENAI_BASE_URL` 配置，支持 OpenAI-compatible 服务地址。
+  2. 新增 `backend/.env` 自动加载能力，便于本地测试 LLM 配置。
+  3. 新增 OpenAI-compatible Chat Completions JSON fallback。
+  4. 兼容 Windows UTF-8 BOM 格式的 `.env` 文件。
+  5. 新增 `python-dotenv` 依赖。
+
+- 【测试】
+  1. 新增配置读取测试，覆盖 `CHART_AGENT_LLM_MODE`、`OPENAI_API_KEY`、`OPENAI_MODEL` 和 `OPENAI_BASE_URL`。
+
+- 【文档】
+  1. 更新 `backend/README.md`，补充 OpenAI-compatible 服务配置示例。
+
+- 【工程】
+  1. 修正 `.gitignore` 中通用 `lib/` 规则误忽略 `frontend/src/lib/` 的问题。
+
 ## [0.4.0] - 2026-06-10
 
 - 【后端】

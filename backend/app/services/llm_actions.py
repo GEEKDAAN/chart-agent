@@ -12,43 +12,65 @@ def generate_llm_action(state: ChartAgentState) -> ChartAgentAction | None:
         return None
 
     try:
-        raw_action = _call_openai_structured_action(state, settings.openai_api_key, settings.openai_model)
+        raw_action = _call_openai_structured_action(
+            state,
+            settings.openai_api_key,
+            settings.openai_model,
+            settings.openai_base_url,
+        )
         return ChartAgentAction.model_validate(raw_action)
     except Exception:
         return None
 
 
-def _call_openai_structured_action(state: ChartAgentState, api_key: str, model: str) -> dict[str, Any]:
+def _call_openai_structured_action(
+    state: ChartAgentState,
+    api_key: str,
+    model: str,
+    base_url: str | None,
+) -> dict[str, Any]:
     from openai import OpenAI
 
-    client = OpenAI(api_key=api_key)
-    response = client.responses.create(
-        model=model,
-        input=[
-            {
-                "role": "system",
-                "content": (
-                    "你是 chart-agent 的图表动作生成节点。"
-                    "只能输出符合 ChartAgentAction 协议的 JSON。"
-                    "不要生成 React、SQL 或 ECharts option。"
-                    "所有字段必须基于当前 ChartSpec、查询结果和用户消息。"
-                ),
+    client = OpenAI(api_key=api_key, base_url=base_url)
+    try:
+        response = client.responses.create(
+            model=model,
+            input=[
+                {"role": "system", "content": _system_prompt()},
+                {"role": "user", "content": json.dumps(_build_llm_context(state), ensure_ascii=False)},
+            ],
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "chart_agent_action",
+                    "schema": _chart_agent_action_schema(),
+                    "strict": False,
+                }
             },
-            {
-                "role": "user",
-                "content": json.dumps(_build_llm_context(state), ensure_ascii=False),
-            },
-        ],
-        text={
-            "format": {
-                "type": "json_schema",
-                "name": "chart_agent_action",
-                "schema": _chart_agent_action_schema(),
-                "strict": False,
-            }
-        },
+        )
+        return json.loads(response.output_text)
+    except Exception:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": _system_prompt()},
+                {"role": "user", "content": json.dumps(_build_llm_context(state), ensure_ascii=False)},
+            ],
+            response_format={"type": "json_object"},
+        )
+        content = response.choices[0].message.content or "{}"
+        return json.loads(content)
+
+
+def _system_prompt() -> str:
+    return (
+        "你是 chart-agent 的图表动作生成节点。"
+        "只能输出符合 ChartAgentAction 协议的 JSON 对象。"
+        "不要生成 React、SQL 或 ECharts option。"
+        "所有字段必须基于当前 ChartSpec、查询结果和用户消息。"
+        "JSON 必须包含 type、message、chart、chartId、patch、code。"
+        "不用的字段填 null。"
     )
-    return json.loads(response.output_text)
 
 
 def _build_llm_context(state: ChartAgentState) -> dict[str, Any]:

@@ -31,9 +31,23 @@ CHART_AGENT_LLM_MODE=off
 CHART_AGENT_LLM_MODE=openai
 OPENAI_API_KEY=你的密钥
 OPENAI_MODEL=gpt-4o-mini
+OPENAI_BASE_URL=
 ```
 
 启用后，`generate_action` 节点会先尝试调用 LLM 生成 `ChartAgentAction`。如果未配置密钥、调用失败或输出校验失败，会自动回退到确定性生成逻辑。
+
+后端优先使用 Responses API 的 JSON schema 输出；如果兼容服务不支持 Responses API，会回退到 Chat Completions 的 JSON object 输出。
+
+如果使用 OpenAI-compatible 服务，可以设置自定义请求地址：
+
+```bash
+CHART_AGENT_LLM_MODE=openai
+OPENAI_API_KEY=你的密钥
+OPENAI_MODEL=gpt-5.5
+OPENAI_BASE_URL=https://ai.allrealai.com/v1
+```
+
+本地也可以复制 `backend/.env.example` 为 `backend/.env` 后填写配置；`.env` 文件不会提交到 Git。
 
 ## 本地运行
 
