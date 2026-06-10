@@ -33,6 +33,26 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.2.0] - 2026-06-09
+
+- 【前端】
+  1. 新增 React + Vite 前端 MVP 工程。
+  2. 新增 `ChartSpec` 类型、校验、patch 合并和 action 应用逻辑。
+  3. 新增 ECharts option 转换和图表渲染组件。
+  4. 新增对话输入界面和快捷示例指令。
+
+- 【后端】
+  1. 新增 FastAPI 后端 MVP 工程。
+  2. 新增 `ChartSpec`、`ChartPatch`、`ChartAgentAction` 等协议模型。
+  3. 新增 `/chart-agent/chat` 接口。
+  4. 新增 mock 指标目录、mock 指标查询和基础权限校验。
+  5. 新增规则版 ChartAgent 路由，支持创建图表、改颜色、加指标、换图表类型和解释图表。
+
+- 【文档】
+  1. 将根 `README.md` 调整为中文为主的项目说明。
+  2. 新增前端和后端本地运行说明。
+  3. 新增 `backend/README.md` 和 `frontend/README.md`。
+
 ## [0.1.2] - 2026-06-09
 
 - 【文档】

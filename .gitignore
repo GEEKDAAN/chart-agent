@@ -8,6 +8,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+*.tsbuildinfo
 .coverage
 .coverage.*
 coverage/
@@ -29,6 +30,7 @@ node_modules/
 dist/
 build/
 .vite/
+frontend/vite.config.d.ts
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

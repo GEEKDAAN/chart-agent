@@ -2,54 +2,85 @@
 
 图表解析 Agent，根据用户意图生成和编辑目标图表 UI。
 
-Conversational chart generation and editing system built around a controlled `ChartSpec` protocol.
+项目目标是实现一个对话式图表生成与编辑系统：用户用自然语言表达分析意图，后端返回受控的 `ChartSpec` / `ChartPatch` / `ChartAgentAction`，前端校验后转换为 ECharts option 并渲染。
 
-## Goal
+## 核心原则
 
-`chart-agent` lets users create and edit charts through natural language while keeping rendering, data access, and model output bounded by explicit schemas.
+- 模型只生成受控协议，不直接生成 React 组件。
+- 模型不直接生成任意 ECharts option。
+- Agent 不直接写 SQL，只能通过受控指标工具查询数据。
+- 前端负责 `ChartSpec` 校验、patch 合并、ECharts option 转换和渲染。
+- 每轮请求都携带当前 `chartSpec`，用于支持“把这个改成红色”这类上下文指令。
 
-The core design principle is:
-
-- The model generates `ChartSpec`, `ChartPatch`, or `ChartAgentAction`.
-- The frontend validates and converts `ChartSpec` into ECharts options.
-- The backend coordinates intent routing, semantic metric access, permissions, and output validation.
-- The agent never writes SQL directly and never generates arbitrary React components or ECharts options.
-
-## Planned Stack
+## 技术栈
 
 - React + Vite
-- CopilotKit
 - ECharts
 - FastAPI
-- LangGraph
-- Python semantic metric layer
+- LangGraph（后续接入）
+- CopilotKit（后续接入）
+- Python 语义指标层
 
-## Repository Layout
+## 目录结构
 
 ```text
-backend/   FastAPI, LangGraph agent, schemas, validators, and metric tools
-frontend/  React app, CopilotKit integration, ChartSpec runtime, and ECharts rendering
-docs/      Architecture notes and product design documents
+backend/   FastAPI 接口、协议模型、mock 指标查询、Agent 路由逻辑
+frontend/  React 应用、ChartSpec runtime、ECharts 渲染和对话输入
+docs/      架构说明和设计文档
 ```
+
+## 本地运行
+
+后端：
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+前端：
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+如果 PowerShell 拦截 `npm.ps1`，使用：
+
+```bash
+npm.cmd install
+npm.cmd run dev
+```
+
+访问：
+
+```text
+http://localhost:5173
+```
+
+## MVP 范围
+
+- 单图表生成
+- 单图表编辑
+- 受控 `ChartSpec` 协议
+- mock 指标目录和 mock 查询服务
+- 非流式 JSON 响应
+- 简单对话输入框
+
+## 暂不包含
+
+- 多图 dashboard
+- 图表持久化和分享
+- 复杂下钻
+- 多图联动
+- 真实 LLM / LangGraph 编排
+- CopilotKit 侧边栏
+- Agent 直接写 SQL
 
 ## 更新日志
 
 项目变更记录在 `CHANGELOG.md` 中。新增版本记录时，请遵循其中定义的中文模块分组格式。
-
-## MVP Scope
-
-- Single-chart creation
-- Single-chart editing
-- Controlled chart schema
-- Mock metric catalog and mock query service
-- Non-streaming JSON response first
-- Streaming events after the core loop is stable
-
-## Out of Scope for MVP
-
-- Multi-chart dashboards
-- Chart persistence and sharing
-- Drill-down workflows
-- Multi-agent orchestration
-- Direct SQL generation by the agent
-- Direct ECharts option generation by the model
