@@ -17,14 +17,14 @@
 - React + Vite
 - ECharts
 - FastAPI
-- LangGraph（后续接入）
+- LangGraph
 - CopilotKit（后续接入）
 - Python 语义指标层
 
 ## 目录结构
 
 ```text
-backend/   FastAPI 接口、协议模型、mock 指标查询、Agent 路由逻辑
+backend/   FastAPI 接口、协议模型、LangGraph workflow、mock 指标查询
 frontend/  React 应用、ChartSpec runtime、ECharts 渲染和对话输入
 docs/      架构说明和设计文档
 ```
@@ -68,6 +68,7 @@ http://localhost:5173
 - 单图表编辑
 - 受控 `ChartSpec` 协议
 - mock 指标目录和 mock 查询服务
+- LangGraph 单 Agent workflow
 - 非流式 JSON 响应
 - 简单对话输入框
 
@@ -77,7 +78,7 @@ http://localhost:5173
 - 图表持久化和分享
 - 复杂下钻
 - 多图联动
-- 真实 LLM / LangGraph 编排
+- 真实 LLM 输出
 - CopilotKit 侧边栏
 - Agent 直接写 SQL
 

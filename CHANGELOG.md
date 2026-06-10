@@ -33,6 +33,23 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.3.0] - 2026-06-10
+
+- 【后端】
+  1. 新增 LangGraph 版 `ChartAgent` workflow。
+  2. 将原规则版 Agent 入口迁移为 `classify_intent -> plan_data -> query_data -> generate_action -> validate_action -> respond` 节点编排。
+  3. 保持 `/chart-agent/chat` 外部接口兼容。
+  4. 新增可注入的 `query_metrics` 依赖，便于验证样式修改不会触发数据查询。
+
+- 【测试】
+  1. 新增后端 pytest 测试。
+  2. 覆盖创建图表、修改颜色、新增利润率、切换图表类型、缺少当前图表时报错等场景。
+  3. 覆盖 LangGraph workflow 中样式修改不查数、创建图表查数一次的行为。
+
+- 【文档】
+  1. 更新根 `README.md`，标记 LangGraph 已接入。
+  2. 更新 `backend/README.md`，补充 Agent workflow 和测试命令。
+
 ## [0.2.0] - 2026-06-09
 
 - 【前端】
