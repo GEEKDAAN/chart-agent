@@ -57,6 +57,24 @@ npm.cmd install
 npm.cmd run dev
 ```
 
+CopilotKit 本地联调：
+
+```bash
+# 后端：建议用独立端口启动当前代码，避免和已有 8000 进程冲突
+cd backend
+set CHART_AGENT_LLM_MODE=off
+uvicorn app.main:app --reload --port 8002
+
+# 前端：在 frontend/.env 中配置 Runtime 地址
+VITE_COPILOT_RUNTIME_URL=http://localhost:8002/copilotkit
+```
+
+说明：
+
+- `CHART_AGENT_LLM_MODE=off` 用于稳定验证本地链路，避免外部 LLM 网络或额度影响联调。
+- `frontend/.env` 和 `backend/.env` 只用于本地配置，已被 `.gitignore` 忽略，不能提交真实密钥。
+- 页面状态显示 `CopilotKit 已启用` 时，表示前端已读取到 Runtime 地址。
+
 访问：
 
 ```text
