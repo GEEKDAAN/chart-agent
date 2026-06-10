@@ -19,7 +19,7 @@
 - FastAPI
 - LangGraph
 - OpenAI API（可选）
-- CopilotKit（可选前端侧边栏）
+- CopilotKit（可选前端侧边栏和 Runtime 兼容端点）
 - Python 语义指标层
 
 ## 目录结构
@@ -72,6 +72,7 @@ http://localhost:5173
 - LangGraph 单 Agent workflow
 - 可选真实 LLM 结构化 action 生成
 - 可选 CopilotKit 前端侧边栏
+- CopilotKit Runtime 最小兼容端点
 - 非流式 JSON 响应
 - 简单对话输入框
 
@@ -81,7 +82,8 @@ http://localhost:5173
 - 图表持久化和分享
 - 复杂下钻
 - 多图联动
-- CopilotKit Runtime 后端适配
+- CopilotKit 前端 action 自动应用图表变更
+- CopilotKit 流式响应
 - Agent 直接写 SQL
 
 ## 更新日志

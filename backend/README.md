@@ -49,6 +49,18 @@ OPENAI_BASE_URL=https://ai.allrealai.com/v1
 
 本地也可以复制 `backend/.env.example` 为 `backend/.env` 后填写配置；`.env` 文件不会提交到 Git。
 
+## CopilotKit Runtime
+
+后端提供 `/copilotkit` 作为 CopilotKit Runtime 最小兼容端点，当前支持：
+
+- `availableAgents`
+- `loadAgentState`
+- `generateCopilotResponse`
+
+`generateCopilotResponse` 会读取 CopilotKit 消息中的最后一条用户文本，并结合前端通过 `properties.currentChart` 传入的当前图表上下文，转接到现有 `ChartAgent` workflow。
+
+当前版本返回 assistant 文本响应，用于打通侧边栏到后端 Agent 的链路。前端 action 自动应用图表变更和流式响应会在后续版本接入。
+
 ## 本地运行
 
 ```bash

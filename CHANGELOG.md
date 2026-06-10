@@ -33,6 +33,25 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.6.0] - 2026-06-10
+
+- 【前端】
+  1. CopilotKit 请求新增 `currentChart`、`pageContext` 和 `userContext` 运行时上下文。
+  2. 侧边栏上下文指令可以传递当前图表状态到后端 Runtime。
+  3. 更新前端版本号和界面版本标识为 `0.6.0`。
+
+- 【后端】
+  1. 新增 `/copilotkit` Runtime 兼容端点。
+  2. 支持 CopilotKit `availableAgents`、`loadAgentState` 和 `generateCopilotResponse` 操作。
+  3. 将 CopilotKit 用户消息转接到现有 `ChartAgent` workflow。
+  4. 返回 CopilotKit GraphQL Runtime 兼容的 assistant 文本响应。
+
+- 【测试】
+  1. 新增 CopilotKit Runtime API 测试，覆盖 agent 列表、状态加载、消息生成和当前图表上下文传递。
+
+- 【文档】
+  1. 更新根 `README.md`、`backend/README.md` 和 `frontend/README.md`，说明 Runtime 当前能力边界。
+
 ## [0.5.0] - 2026-06-10
 
 - 【前端】

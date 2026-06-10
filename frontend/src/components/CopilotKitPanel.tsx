@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
@@ -17,12 +18,21 @@ const suggestions = [
 ];
 
 export function CopilotKitPanel({ chart }: CopilotKitPanelProps) {
+  const properties = useMemo(
+    () => ({
+      currentChart: chart,
+      pageContext: { source: "copilotkit" },
+      userContext: { userId: "u_demo", tenantId: "t_demo" }
+    }),
+    [chart]
+  );
+
   if (!isCopilotEnabled) {
     return null;
   }
 
   return (
-    <CopilotKit runtimeUrl={copilotRuntimeUrl}>
+    <CopilotKit runtimeUrl={copilotRuntimeUrl} properties={properties}>
       <CopilotSidebar
         defaultOpen={false}
         instructions={buildInstructions(chart)}

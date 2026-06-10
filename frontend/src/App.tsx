@@ -56,7 +56,7 @@ export function App() {
             <p>基于受控 ChartSpec 协议的对话式图表生成 MVP</p>
           </div>
           <div className="topbar-badges">
-            <span className="status-pill">v0.5.0</span>
+            <span className="status-pill">v0.6.0</span>
             <span className="status-pill">{isCopilotEnabled ? "CopilotKit 已启用" : "CopilotKit 未配置"}</span>
           </div>
         </header>
