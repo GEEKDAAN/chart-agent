@@ -33,6 +33,18 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.8.0] - 2026-06-10
+
+- 【后端】
+  1. 将 mock 指标能力重构为 `MetricService`、`MetricCatalog` 和 `MetricDataSource` 边界。
+  2. 保持 `get_metric_catalog`、`validate_data_access` 和 `query_metrics` 兼容，Agent workflow 无需改动。
+  3. 支持按 `time_range.end` 生成稳定日期维度 mock 数据，并限制单次查询最大返回 500 行。
+  4. 更新 FastAPI 应用版本为 `0.8.0`。
+- 【测试】
+  1. 新增指标服务层测试，覆盖指标目录、权限校验、过滤、limit、日期范围和可替换数据源。
+- 【文档】
+  1. 更新根 `README.md` 和 `backend/README.md`，说明可替换指标服务层和后续接真实数据源的扩展边界。
+
 ## [0.7.1] - 2026-06-10
 
 - 【文档】

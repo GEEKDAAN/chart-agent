@@ -87,6 +87,7 @@ http://localhost:5173
 - 单图表编辑
 - 受控 `ChartSpec` 协议
 - mock 指标目录和 mock 查询服务
+- 可替换的后端指标服务层和 mock 数据源
 - LangGraph 单 Agent workflow
 - 可选真实 LLM 结构化 action 生成
 - 可选 CopilotKit 前端侧边栏

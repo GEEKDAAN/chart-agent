@@ -17,6 +17,16 @@ classify_intent
 
 其中样式修改、图表类型切换和图表解释不会进入数据查询节点；创建图表和新增指标会通过 mock 指标服务查询数据。
 
+## 指标服务层
+
+后端通过 `app.services.metrics` 暴露受控指标能力，Agent 只依赖三个稳定函数：
+
+- `get_metric_catalog(user_context)`：返回当前可用指标和维度。
+- `validate_data_access(user_context, metrics, dimensions)`：校验用户上下文、指标和维度是否允许访问。
+- `query_metrics(metrics, dimensions, filters, time_range, limit)`：返回标准 `ChartData`。
+
+内部实现已经拆为 `MetricService`、`MetricCatalog` 和 `MetricDataSource`。当前默认数据源是 `MockMetricDataSource`，后续接数据库、BI API 或语义指标平台时，优先新增一个实现 `MetricDataSource` 协议的数据源，不直接改 Agent workflow。
+
 ## LLM 配置
 
 默认关闭真实 LLM，后端使用确定性 fallback 生成 action。
