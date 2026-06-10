@@ -1,3 +1,5 @@
+import base64
+import json
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -159,8 +161,14 @@ def _format_chart_agent_response(response: dict[str, Any]) -> str:
     return (
         f"{action['message']}\n\n"
         "当前版本已通过 CopilotKit Runtime 调用后端图表 Agent。"
-        "图表自动应用会在前端 action 集成后接入。"
+        "\n\n"
+        f"<!-- chart-agent-action:{_encode_action_marker(action)} -->"
     )
+
+
+def _encode_action_marker(action: dict[str, Any]) -> str:
+    raw = json.dumps(action, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return base64.b64encode(raw).decode("ascii")
 
 
 def _now_iso() -> str:

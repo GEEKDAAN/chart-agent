@@ -1,13 +1,15 @@
-import { useMemo } from "react";
-import { CopilotKit } from "@copilotkit/react-core";
+import { useEffect, useMemo, useRef } from "react";
+import { CopilotKit, useCopilotMessagesContext } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
 
 import { copilotRuntimeUrl, isCopilotEnabled } from "../lib/config";
-import type { ChartSpec } from "../types/chart";
+import type { ChartAgentAction, ChartSpec } from "../types/chart";
 
 type CopilotKitPanelProps = {
   chart: ChartSpec | null;
+  onApplyAction: (action: ChartAgentAction) => void;
+  onApplyError: (error: unknown) => void;
 };
 
 const suggestions = [
@@ -17,7 +19,7 @@ const suggestions = [
   { title: "切换类型", message: "换成折线图" }
 ];
 
-export function CopilotKitPanel({ chart }: CopilotKitPanelProps) {
+export function CopilotKitPanel({ chart, onApplyAction, onApplyError }: CopilotKitPanelProps) {
   const properties = useMemo(
     () => ({
       currentChart: chart,
@@ -33,6 +35,7 @@ export function CopilotKitPanel({ chart }: CopilotKitPanelProps) {
 
   return (
     <CopilotKit runtimeUrl={copilotRuntimeUrl} properties={properties}>
+      <CopilotActionBridge onApplyAction={onApplyAction} onApplyError={onApplyError} />
       <CopilotSidebar
         defaultOpen={false}
         instructions={buildInstructions(chart)}
@@ -44,6 +47,49 @@ export function CopilotKitPanel({ chart }: CopilotKitPanelProps) {
       />
     </CopilotKit>
   );
+}
+
+function CopilotActionBridge({
+  onApplyAction,
+  onApplyError
+}: {
+  onApplyAction: (action: ChartAgentAction) => void;
+  onApplyError: (error: unknown) => void;
+}) {
+  const { messages } = useCopilotMessagesContext();
+  const appliedMessageIds = useRef(new Set<string>());
+
+  useEffect(() => {
+    for (const message of messages) {
+      if (!message.isTextMessage() || message.role !== "assistant") continue;
+      if (appliedMessageIds.current.has(message.id)) continue;
+
+      const action = extractActionMarker(message.content);
+      if (!action) continue;
+
+      try {
+        onApplyAction(action);
+      } catch (error) {
+        onApplyError(error);
+      } finally {
+        appliedMessageIds.current.add(message.id);
+      }
+    }
+  }, [messages, onApplyAction, onApplyError]);
+
+  return null;
+}
+
+function extractActionMarker(content: string): ChartAgentAction | null {
+  const match = content.match(/<!--\s*chart-agent-action:([A-Za-z0-9+/=]+)\s*-->/);
+  if (!match) return null;
+
+  try {
+    const bytes = Uint8Array.from(atob(match[1]), (character) => character.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes)) as ChartAgentAction;
+  } catch {
+    return null;
+  }
 }
 
 function buildInstructions(chart: ChartSpec | null): string {

@@ -1,10 +1,10 @@
-import { FormEvent, Suspense, lazy, useState } from "react";
+import { FormEvent, Suspense, lazy, useCallback, useState } from "react";
 
 import { ChartPanel } from "./components/ChartPanel";
 import { sendChartMessage } from "./lib/api";
 import { applyChartAction } from "./lib/chartSpec";
 import { isCopilotEnabled } from "./lib/config";
-import type { ChartSpec } from "./types/chart";
+import type { ChartAgentAction, ChartSpec } from "./types/chart";
 
 const CopilotKitPanel = lazy(() =>
   import("./components/CopilotKitPanel").then((module) => ({ default: module.CopilotKitPanel }))
@@ -24,6 +24,15 @@ export function App() {
   const [status, setStatus] = useState("后端运行后，可以发送自然语言生成图表。");
   const [loading, setLoading] = useState(false);
 
+  const applyAgentAction = useCallback(
+    (action: ChartAgentAction) => {
+      const nextChart = applyChartAction(chart, action);
+      setChart(nextChart);
+      setStatus(action.message);
+    },
+    [chart]
+  );
+
   async function submit(nextMessage = message) {
     const trimmed = nextMessage.trim();
     if (!trimmed) return;
@@ -31,9 +40,7 @@ export function App() {
     setStatus("处理中...");
     try {
       const response = await sendChartMessage(trimmed, chart);
-      const nextChart = applyChartAction(chart, response.action);
-      setChart(nextChart);
-      setStatus(response.action.message);
+      applyAgentAction(response.action);
       setMessage(trimmed);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "请求失败");
@@ -56,7 +63,7 @@ export function App() {
             <p>基于受控 ChartSpec 协议的对话式图表生成 MVP</p>
           </div>
           <div className="topbar-badges">
-            <span className="status-pill">v0.6.0</span>
+            <span className="status-pill">v0.7.0</span>
             <span className="status-pill">{isCopilotEnabled ? "CopilotKit 已启用" : "CopilotKit 未配置"}</span>
           </div>
         </header>
@@ -88,7 +95,11 @@ export function App() {
 
       {isCopilotEnabled ? (
         <Suspense fallback={null}>
-          <CopilotKitPanel chart={chart} />
+          <CopilotKitPanel
+            chart={chart}
+            onApplyAction={applyAgentAction}
+            onApplyError={(error) => setStatus(error instanceof Error ? error.message : "CopilotKit 图表应用失败")}
+          />
         </Suspense>
       ) : null}
     </main>

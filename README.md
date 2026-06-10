@@ -73,6 +73,7 @@ http://localhost:5173
 - 可选真实 LLM 结构化 action 生成
 - 可选 CopilotKit 前端侧边栏
 - CopilotKit Runtime 最小兼容端点
+- CopilotKit 图表 action 自动应用
 - 非流式 JSON 响应
 - 简单对话输入框
 
@@ -82,7 +83,6 @@ http://localhost:5173
 - 图表持久化和分享
 - 复杂下钻
 - 多图联动
-- CopilotKit 前端 action 自动应用图表变更
 - CopilotKit 流式响应
 - Agent 直接写 SQL
 

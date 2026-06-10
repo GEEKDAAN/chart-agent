@@ -33,6 +33,24 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.7.0] - 2026-06-10
+
+- 【前端】
+  1. 新增 CopilotKit 消息桥接逻辑，可识别后端返回的 `ChartAgentAction` 标记。
+  2. CopilotKit 侧边栏生成或编辑图表后，会复用现有 `applyChartAction` 自动刷新图表。
+  3. 自动应用失败时会在状态栏显示错误信息。
+  4. 更新前端版本号和界面版本标识为 `0.7.0`。
+
+- 【后端】
+  1. `/copilotkit` 响应新增不可见 `ChartAgentAction` 标记，用于前端安全解析和应用。
+  2. 更新 FastAPI 应用版本为 `0.7.0`。
+
+- 【测试】
+  1. 更新 CopilotKit Runtime API 测试，校验 action 标记可解析，并覆盖上下文编辑 action。
+
+- 【文档】
+  1. 更新根 `README.md`、`backend/README.md` 和 `frontend/README.md`，说明 CopilotKit 自动应用能力和剩余边界。
+
 ## [0.6.0] - 2026-06-10
 
 - 【前端】

@@ -59,7 +59,7 @@ OPENAI_BASE_URL=https://ai.allrealai.com/v1
 
 `generateCopilotResponse` 会读取 CopilotKit 消息中的最后一条用户文本，并结合前端通过 `properties.currentChart` 传入的当前图表上下文，转接到现有 `ChartAgent` workflow。
 
-当前版本返回 assistant 文本响应，用于打通侧边栏到后端 Agent 的链路。前端 action 自动应用图表变更和流式响应会在后续版本接入。
+当前版本会在 assistant 文本响应中附带不可见的 `ChartAgentAction` 标记，前端会解析该标记并自动应用图表变更。CopilotKit 流式响应会在后续版本接入。
 
 ## 本地运行
 

@@ -1,3 +1,6 @@
+import base64
+import json
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -59,6 +62,7 @@ def test_generate_copilot_response_calls_chart_agent():
     assert result["status"]["code"] == "Success"
     assert result["messages"][0]["role"] == "assistant"
     assert "图表" in result["messages"][0]["content"][0]
+    assert _extract_action_marker(result["messages"][0]["content"][0])["type"] == "create_chart"
 
 
 def test_generate_copilot_response_uses_current_chart_context():
@@ -97,6 +101,9 @@ def test_generate_copilot_response_uses_current_chart_context():
     assert response.status_code == 200
     content = response.json()["data"]["generateCopilotResponse"]["messages"][0]["content"][0]
     assert "已将 抖音 调整为指定颜色" in content
+    marker = _extract_action_marker(content)
+    assert marker["type"] == "update_chart"
+    assert marker["patch"]["style"]["colors"] == {"抖音": "#ef4444"}
 
 
 def test_load_agent_state_returns_empty_state():
@@ -129,3 +136,10 @@ def _create_chart() -> dict:
         },
     )
     return response.json()["action"]["chart"]
+
+
+def _extract_action_marker(content: str) -> dict:
+    prefix = "<!-- chart-agent-action:"
+    start = content.index(prefix) + len(prefix)
+    end = content.index(" -->", start)
+    return json.loads(base64.b64decode(content[start:end]).decode("utf-8"))
