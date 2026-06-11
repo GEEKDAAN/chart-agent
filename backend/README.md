@@ -72,13 +72,13 @@ OPENAI_BASE_URL=https://ai.allrealai.com/v1
 
 ## CopilotKit Runtime
 
-后端提供 `/copilotkit` 作为 CopilotKit Runtime 最小兼容端点，当前支持：
+后端提供 `/copilotkit` 作为 CopilotKit v2 single-endpoint Runtime 端点，当前支持：
 
-- `availableAgents`
-- `loadAgentState`
-- `generateCopilotResponse`
+- Runtime Info：`POST /copilotkit`，请求体为 `{ "method": "info" }`
+- Agent 连接：`POST /copilotkit`，请求体为 `{ "method": "agent/connect", ... }`
+- Agent 运行：`POST /copilotkit`，请求体为 `{ "method": "agent/run", ... }`
 
-`generateCopilotResponse` 会读取 CopilotKit 消息中的最后一条用户文本，并结合前端传入的当前图表上下文，转接到现有 `ChartAgent` workflow。
+`agent/run` 会读取 CopilotKit 消息中的最后一条用户文本，并结合前端传入的当前图表上下文，转接到现有 `ChartAgent` workflow。
 
 当前上下文解析会兼容多个位置：
 
@@ -89,7 +89,7 @@ OPENAI_BASE_URL=https://ai.allrealai.com/v1
 - `variables.data.frontend.chartAgentContext`
 - 消息中的隐藏 `chart-agent-context` 标记
 
-当前版本会在 assistant 文本响应中附带不可见的 `ChartAgentAction` 标记，前端会解析该标记并自动应用图表变更。CopilotKit 流式响应会在后续版本接入。
+当前版本会通过 SSE 返回 `RUN_STARTED`、`TEXT_MESSAGE_START`、`TEXT_MESSAGE_CONTENT`、`TEXT_MESSAGE_END` 和 `RUN_FINISHED` 事件，并在 assistant 文本响应中附带不可见的 `ChartAgentAction` 标记，前端会解析该标记并自动应用图表变更。
 
 ## 本地运行
 

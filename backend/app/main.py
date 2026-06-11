@@ -4,11 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers.chart_agent import router as chart_agent_router
 from app.routers.copilotkit import router as copilotkit_router
 
-app = FastAPI(title="chart-agent API", version="0.9.1")
+app = FastAPI(title="chart-agent API", version="0.9.4")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1):517\d$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

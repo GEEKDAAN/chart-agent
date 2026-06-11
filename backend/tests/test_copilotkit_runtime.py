@@ -1,6 +1,3 @@
-import base64
-import json
-
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -9,46 +6,80 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_available_agents_returns_chart_agent():
-    response = client.post(
-        "/copilotkit",
-        json={
-            "operationName": "availableAgents",
-            "query": "query availableAgents { availableAgents { agents { name id description } } }",
-            "variables": {},
-        },
-    )
+def test_runtime_info_returns_single_endpoint_metadata():
+    response = client.post("/copilotkit", json={"method": "info"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["version"] == "1.59.5"
+    assert body["mode"] == "sse"
+    assert body["audioFileTranscriptionEnabled"] is False
+    assert body["agents"]["chart-agent"]["description"] == "生成和编辑受控 ChartSpec 图表。"
+
+
+def test_threads_endpoint_returns_empty_thread_list():
+    response = client.get("/copilotkit/threads?agentId=chart-agent")
 
     assert response.status_code == 200
     assert response.headers["X-CopilotKit-Runtime-Version"] == "1.59.5"
-    body = response.json()
-    assert body["data"]["availableAgents"]["agents"][0]["id"] == "chart-agent"
+    assert response.json() == {"threads": [], "nextCursor": None}
 
 
-def test_generate_copilot_response_calls_chart_agent():
+def test_copilotkit_preflight_allows_local_vite_ports():
+    response = client.options(
+        "/copilotkit",
+        headers={
+            "Origin": "http://127.0.0.1:5177",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:5177"
+
+
+def test_agent_connect_single_endpoint_returns_agui_sse_events():
     response = client.post(
         "/copilotkit",
         json={
-            "operationName": "generateCopilotResponse",
-            "query": "mutation generateCopilotResponse { generateCopilotResponse { threadId } }",
-            "variables": {
-                "data": {
-                    "threadId": "thread-1",
-                    "frontend": {"actions": []},
-                    "messages": [
-                        {
-                            "id": "user-message-1",
-                            "createdAt": "2026-06-10T00:00:00Z",
-                            "textMessage": {
-                                "role": "user",
-                                "content": "看最近30天各渠道销售额",
-                            },
-                        }
-                    ],
-                    "metadata": {"requestType": "Chat"},
-                },
-                "properties": {
-                    "pageContext": {"source": "test"},
+            "method": "agent/connect",
+            "params": {"agentId": "chart-agent"},
+            "body": {
+                "threadId": "thread-connect",
+                "runId": "run-connect",
+                "messages": [],
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    content = response.text
+    assert '"type":"RUN_STARTED"' in content
+    assert '"threadId":"thread-connect"' in content
+    assert '"runId":"run-connect"' in content
+    assert '"type":"RUN_FINISHED"' in content
+
+
+def test_agent_run_single_endpoint_returns_agui_sse_events():
+    response = client.post(
+        "/copilotkit",
+        json={
+            "method": "agent/run",
+            "params": {"agentId": "chart-agent"},
+            "body": {
+                "threadId": "thread-agui",
+                "runId": "run-agui",
+                "messages": [
+                    {
+                        "id": "user-message-agui",
+                        "role": "user",
+                        "content": "看最近30天各渠道销售额",
+                    }
+                ],
+                "forwardedProps": {
+                    "pageContext": {"source": "test-agui"},
                     "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
                 },
             },
@@ -56,42 +87,35 @@ def test_generate_copilot_response_calls_chart_agent():
     )
 
     assert response.status_code == 200
-    body = response.json()
-    result = body["data"]["generateCopilotResponse"]
-    assert result["threadId"] == "thread-1"
-    assert result["status"]["code"] == "Success"
-    assert result["messages"][0]["role"] == "assistant"
-    assert "图表" in result["messages"][0]["content"][0]
-    assert _extract_action_marker(result["messages"][0]["content"][0])["type"] == "create_chart"
+    assert response.headers["content-type"].startswith("text/event-stream")
+    content = response.text
+    assert '"type":"RUN_STARTED"' in content
+    assert '"type":"TEXT_MESSAGE_CONTENT"' in content
+    assert "chart-agent-action" in content
+    assert '"type":"RUN_FINISHED"' in content
 
 
-def test_generate_copilot_response_uses_current_chart_context():
+def test_agent_run_uses_forwarded_current_chart_context():
     chart = _create_chart()
 
     response = client.post(
         "/copilotkit",
         json={
-            "operationName": "generateCopilotResponse",
-            "query": "mutation generateCopilotResponse { generateCopilotResponse { threadId } }",
-            "variables": {
-                "data": {
-                    "threadId": "thread-2",
-                    "frontend": {"actions": []},
-                    "messages": [
-                        {
-                            "id": "user-message-2",
-                            "createdAt": "2026-06-10T00:00:00Z",
-                            "textMessage": {
-                                "role": "user",
-                                "content": "把抖音改成红色",
-                            },
-                        }
-                    ],
-                    "metadata": {"requestType": "Chat"},
-                },
-                "properties": {
+            "method": "agent/run",
+            "params": {"agentId": "chart-agent"},
+            "body": {
+                "threadId": "thread-context",
+                "runId": "run-context",
+                "messages": [
+                    {
+                        "id": "user-message-context",
+                        "role": "user",
+                        "content": "把抖音改成红色",
+                    }
+                ],
+                "forwardedProps": {
                     "currentChart": chart,
-                    "pageContext": {"source": "test"},
+                    "pageContext": {"source": "test-context"},
                     "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
                 },
             },
@@ -99,115 +123,21 @@ def test_generate_copilot_response_uses_current_chart_context():
     )
 
     assert response.status_code == 200
-    content = response.json()["data"]["generateCopilotResponse"]["messages"][0]["content"][0]
-    assert "已将 抖音 调整为指定颜色" in content
-    marker = _extract_action_marker(content)
-    assert marker["type"] == "update_chart"
-    assert marker["patch"]["style"]["colors"] == {"抖音": "#ef4444"}
+    content = response.text
+    assert '"type":"TEXT_MESSAGE_CONTENT"' in content
+    assert "chart-agent-action" in content
 
 
-def test_generate_copilot_response_uses_metadata_chart_context():
-    chart = _create_chart()
-
+def test_unknown_copilotkit_method_is_not_supported():
     response = client.post(
         "/copilotkit",
-        json={
-            "operationName": "generateCopilotResponse",
-            "query": "mutation generateCopilotResponse { generateCopilotResponse { threadId } }",
-            "variables": {
-                "data": {
-                    "threadId": "thread-3",
-                    "frontend": {"actions": []},
-                    "messages": [
-                        {
-                            "id": "user-message-3",
-                            "createdAt": "2026-06-10T00:00:00Z",
-                            "textMessage": {
-                                "role": "user",
-                                "content": "把抖音改成红色",
-                            },
-                        }
-                    ],
-                    "metadata": {
-                        "requestType": "Chat",
-                        "chartAgentContext": {
-                            "currentChart": chart,
-                            "pageContext": {"source": "metadata"},
-                            "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
-                        },
-                    },
-                }
-            },
-        },
+        json={"method": "agent/unknown"},
     )
 
     assert response.status_code == 200
-    content = response.json()["data"]["generateCopilotResponse"]["messages"][0]["content"][0]
-    marker = _extract_action_marker(content)
-    assert marker["type"] == "update_chart"
-    assert marker["patch"]["style"]["colors"] == {"抖音": "#ef4444"}
-
-
-def test_generate_copilot_response_uses_data_properties_context():
-    chart = _create_chart()
-
-    response = client.post(
-        "/copilotkit",
-        json={
-            "operationName": "generateCopilotResponse",
-            "query": "mutation generateCopilotResponse { generateCopilotResponse { threadId } }",
-            "variables": {
-                "data": {
-                    "threadId": "thread-4",
-                    "frontend": {"actions": []},
-                    "messages": [
-                        {
-                            "id": "user-message-4",
-                            "createdAt": "2026-06-10T00:00:00Z",
-                            "textMessage": {
-                                "role": "user",
-                                "content": "加一列利润率",
-                            },
-                        }
-                    ],
-                    "metadata": {"requestType": "Chat"},
-                    "properties": {
-                        "currentChart": chart,
-                        "pageContext": {"source": "data.properties"},
-                        "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
-                    },
-                }
-            },
-        },
-    )
-
-    assert response.status_code == 200
-    content = response.json()["data"]["generateCopilotResponse"]["messages"][0]["content"][0]
-    marker = _extract_action_marker(content)
-    assert marker["type"] == "update_chart"
-    assert [column["key"] for column in marker["patch"]["data"]["columns"]] == [
-        "channel",
-        "sales",
-        "profit_rate",
-    ]
-
-
-def test_load_agent_state_returns_empty_state():
-    response = client.post(
-        "/copilotkit",
-        json={
-            "operationName": "loadAgentState",
-            "query": "query loadAgentState { loadAgentState { threadId } }",
-            "variables": {"data": {"threadId": "thread-1", "agentName": "chart-agent"}},
-        },
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    state = body["data"]["loadAgentState"]
-    assert state["threadId"] == "thread-1"
-    assert state["threadExists"] is False
-    assert state["state"] == "{}"
+    assert response.json() == {
+        "errors": [{"message": "Unsupported CopilotKit method: agent/unknown"}],
+    }
 
 
 def _create_chart() -> dict:
@@ -222,10 +152,3 @@ def _create_chart() -> dict:
         },
     )
     return response.json()["action"]["chart"]
-
-
-def _extract_action_marker(content: str) -> dict:
-    prefix = "<!-- chart-agent-action:"
-    start = content.index(prefix) + len(prefix)
-    end = content.index(" -->", start)
-    return json.loads(base64.b64decode(content[start:end]).decode("utf-8"))

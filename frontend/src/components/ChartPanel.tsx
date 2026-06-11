@@ -24,7 +24,7 @@ export function ChartPanel({ chart }: ChartPanelProps) {
   }, [chart]);
 
   if (!chart) {
-    return <div className="empty-state">输入分析需求后生成图表</div>;
+    return <div className="empty-state">通过 CopilotKit 侧边栏生成图表</div>;
   }
 
   if (chart.chartType === "table") {

@@ -19,14 +19,14 @@
 - FastAPI
 - LangGraph
 - OpenAI API（可选）
-- CopilotKit（可选前端侧边栏和 Runtime 兼容端点）
+- CopilotKit（前端侧边栏和 Runtime 兼容端点）
 - Python 语义指标层
 
 ## 目录结构
 
 ```text
 backend/   FastAPI 接口、协议模型、LangGraph workflow、mock 指标查询
-frontend/  React 应用、ChartSpec runtime、ECharts 渲染和对话输入
+frontend/  React 应用、CopilotKit 侧边栏、ChartSpec runtime 和 ECharts 渲染
 docs/      架构说明和设计文档
 ```
 
@@ -65,8 +65,9 @@ cd backend
 set CHART_AGENT_LLM_MODE=off
 uvicorn app.main:app --reload --port 8002
 
-# 前端：在 frontend/.env 中配置 Runtime 地址
-VITE_COPILOT_RUNTIME_URL=http://localhost:8002/copilotkit
+# 前端：在 frontend/.env 中配置相对 Runtime 地址和后端代理地址
+VITE_COPILOT_RUNTIME_URL=/copilotkit
+VITE_BACKEND_PROXY_URL=http://localhost:8002
 ```
 
 说明：
@@ -74,6 +75,7 @@ VITE_COPILOT_RUNTIME_URL=http://localhost:8002/copilotkit
 - `CHART_AGENT_LLM_MODE=off` 用于稳定验证本地链路，避免外部 LLM 网络或额度影响联调。
 - `frontend/.env` 和 `backend/.env` 只用于本地配置，已被 `.gitignore` 忽略，不能提交真实密钥。
 - 页面状态显示 `CopilotKit 已启用` 时，表示前端已读取到 Runtime 地址。
+- 当前前端不再提供普通对话框 fallback，图表生成和编辑都通过 CopilotKit 侧边栏完成。
 
 访问：
 
@@ -91,11 +93,10 @@ http://localhost:5173
 - 确定性数据需求解析，支持指标、维度、筛选和简单时间范围
 - LangGraph 单 Agent workflow
 - 可选真实 LLM 结构化 action 生成
-- 可选 CopilotKit 前端侧边栏
+- CopilotKit 前端侧边栏
 - CopilotKit Runtime 最小兼容端点
 - CopilotKit 图表 action 自动应用
 - 非流式 JSON 响应
-- 简单对话输入框
 
 ## 暂不包含
 

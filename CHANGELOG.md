@@ -33,6 +33,43 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.9.4] - 2026-06-11
+
+- 【前端】
+  1. 将 CopilotKit 接入切换到 v2 组件入口，使用 `CopilotKitProvider`、`CopilotSidebar`、`useAgentContext` 和 `useAgent` 统一处理侧边栏消息、上下文和运行状态。
+  2. 显式绑定 `chart-agent` Agent，并通过 v2 建议词配置维护图表生成和编辑快捷指令。
+  3. 调整 TypeScript 模块解析为 `Bundler`，支持 CopilotKit v2 子路径类型解析。
+  4. 更新前端版本号和界面版本标识为 `0.9.4`。
+
+- 【后端】
+  1. 收敛 `/copilotkit` 为 CopilotKit v2 single-endpoint Runtime，只保留 `info`、`agent/connect` 和 `agent/run`。
+  2. 移除旧 GraphQL Runtime 兼容分支，避免保留未使用的 `availableAgents`、`loadAgentState` 和 `generateCopilotResponse` 入口。
+  3. 补齐 `agent/connect` SSE 生命周期响应，确保侧边栏初始化连接可正常完成。
+  4. 更新 FastAPI 应用版本为 `0.9.4`。
+
+- 【测试】
+  1. 重写 CopilotKit Runtime 测试，覆盖 `info`、`threads`、`agent/connect`、`agent/run`、当前图表上下文传递和未知 method。
+  2. 完整后端测试通过，前端生产构建通过。
+
+## [0.9.3] - 2026-06-11
+
+- 【前端】
+  1. 移除主界面的普通对话框和快捷提示按钮，统一使用 CopilotKit 侧边栏作为自然语言交互入口。
+  2. CopilotKit 侧边栏默认展开，空图表状态提示用户通过侧边栏生成图表。
+  3. 更新前端版本号和界面版本标识为 `0.9.3`。
+
+- 【后端】
+  1. 放宽本地 Vite 端口 CORS 规则，支持 `localhost/127.0.0.1` 的 `517x` 开发端口访问 `/copilotkit`。
+  2. 补齐 CopilotKit single-endpoint Runtime Info 响应，避免前端启动时报 `runtime_info_fetch_failed`。
+  3. 更新 FastAPI 应用版本为 `0.9.3`。
+
+- 【测试】
+  1. 新增 `/copilotkit` 本地 Vite 端口 CORS 预检测试。
+  2. 新增 CopilotKit Runtime Info 响应结构测试。
+
+- 【文档】
+  1. 更新前端和根 README，明确当前版本不再保留普通对话框 fallback。
+
 ## [0.9.2] - 2026-06-11
 
 - 【前端】

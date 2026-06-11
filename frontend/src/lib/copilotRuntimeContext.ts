@@ -60,6 +60,26 @@ function patchRequestInit(
 
   try {
     const payload = JSON.parse(init.body);
+    if (payload.method === "agent/run" && payload.body) {
+      payload.body = {
+        ...payload.body,
+        forwardedProps: {
+          ...(payload.body.forwardedProps ?? {}),
+          ...context,
+        },
+        properties: {
+          ...(payload.body.properties ?? {}),
+          ...context,
+        },
+        chartAgentContext: context,
+      };
+
+      return {
+        ...init,
+        body: JSON.stringify(payload),
+      };
+    }
+
     const variables = payload.variables ?? {};
     const data = variables.data ?? {};
     const metadata = data.metadata ?? {};

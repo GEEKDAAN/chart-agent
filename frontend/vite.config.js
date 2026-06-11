@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         "/chart-agent": backendProxyUrl,
+        "/copilotkit": backendProxyUrl,
         "/health": backendProxyUrl
       }
     }

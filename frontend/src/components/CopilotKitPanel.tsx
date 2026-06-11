@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef } from "react";
-import { CopilotKit, useCopilotMessagesContext, useCopilotReadable } from "@copilotkit/react-core";
-import { CopilotSidebar } from "@copilotkit/react-ui";
-import "@copilotkit/react-ui/styles.css";
+import {
+  CopilotKitProvider,
+  CopilotSidebar,
+  useAgent,
+  useAgentContext,
+  useConfigureSuggestions
+} from "@copilotkit/react-core/v2";
+import "@copilotkit/react-core/v2/styles.css";
 
 import { copilotRuntimeUrl, isCopilotEnabled } from "../lib/config";
 import {
@@ -10,6 +15,14 @@ import {
   type ChartAgentRuntimeContext
 } from "../lib/copilotRuntimeContext";
 import type { ChartAgentAction, ChartSpec } from "../types/chart";
+
+type JsonSerializable =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonSerializable[]
+  | { [key: string]: JsonSerializable };
 
 type CopilotKitPanelProps = {
   chart: ChartSpec | null;
@@ -39,19 +52,26 @@ export function CopilotKitPanel({ chart, onApplyAction, onApplyError }: CopilotK
   }
 
   return (
-    <CopilotKit runtimeUrl={copilotRuntimeUrl} properties={runtimeContext}>
+    <CopilotKitProvider
+      runtimeUrl={copilotRuntimeUrl}
+      properties={runtimeContext}
+      onError={({ error, code, context }) => {
+        onApplyError(new Error(`CopilotKit 请求失败：${code} ${error.message} ${JSON.stringify(context)}`));
+      }}
+    >
       <CopilotRuntimeContextBridge context={runtimeContext} />
       <CopilotActionBridge onApplyAction={onApplyAction} onApplyError={onApplyError} />
       <CopilotSidebar
-        defaultOpen={false}
-        instructions={buildInstructions(chart)}
+        agentId="chart-agent"
+        defaultOpen
+        width={420}
         labels={{
-          title: "chart-agent",
-          initial: "描述你想生成或修改的图表。"
+          modalHeaderTitle: "chart-agent",
+          welcomeMessageText: "描述你想生成或修改的图表。",
+          chatInputPlaceholder: "输入图表需求..."
         }}
-        suggestions={suggestions}
       />
-    </CopilotKit>
+    </CopilotKitProvider>
   );
 }
 
@@ -61,12 +81,21 @@ function CopilotRuntimeContextBridge({ context }: { context: ChartAgentRuntimeCo
     installCopilotRuntimeContextPatch(copilotRuntimeUrl);
   }, [context]);
 
-  useCopilotReadable(
+  useAgentContext({
+    description: "chart-agent 当前图表上下文",
+    value: toJsonSerializable(context)
+  });
+
+  useAgentContext({
+    description: "chart-agent 前端指令",
+    value: buildInstructions(context.currentChart)
+  });
+
+  useConfigureSuggestions(
     {
-      description: "chart-agent 当前图表上下文",
-      value: context
+      suggestions
     },
-    [context]
+    [context.currentChart]
   );
 
   return null;
@@ -79,12 +108,12 @@ function CopilotActionBridge({
   onApplyAction: (action: ChartAgentAction) => void;
   onApplyError: (error: unknown) => void;
 }) {
-  const { messages } = useCopilotMessagesContext();
+  const { agent } = useAgent({ agentId: "chart-agent" });
   const appliedMessageIds = useRef(new Set<string>());
 
   useEffect(() => {
-    for (const message of messages) {
-      if (!message.isTextMessage() || message.role !== "assistant") continue;
+    for (const message of agent.messages) {
+      if (message.role !== "assistant" || typeof message.content !== "string") continue;
       if (appliedMessageIds.current.has(message.id)) continue;
 
       const action = extractActionMarker(message.content);
@@ -98,9 +127,13 @@ function CopilotActionBridge({
         appliedMessageIds.current.add(message.id);
       }
     }
-  }, [messages, onApplyAction, onApplyError]);
+  }, [agent.messages, onApplyAction, onApplyError]);
 
   return null;
+}
+
+function toJsonSerializable(value: unknown): JsonSerializable {
+  return JSON.parse(JSON.stringify(value)) as JsonSerializable;
 }
 
 function extractActionMarker(content: string): ChartAgentAction | null {
