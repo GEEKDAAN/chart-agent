@@ -17,6 +17,17 @@ def test_runtime_info_returns_single_endpoint_metadata():
     assert body["agents"]["chart-agent"]["description"] == "生成和编辑受控 ChartSpec 图表。"
 
 
+def test_runtime_info_get_endpoint_returns_metadata_for_copilotkit_client():
+    response = client.get("/copilotkit/info")
+
+    assert response.status_code == 200
+    assert response.headers["X-CopilotKit-Runtime-Version"] == "1.59.5"
+    body = response.json()
+    assert body["version"] == "1.59.5"
+    assert body["mode"] == "sse"
+    assert body["agents"]["chart-agent"]["name"] == "chart-agent"
+
+
 def test_threads_endpoint_returns_empty_thread_list():
     response = client.get("/copilotkit/threads?agentId=chart-agent")
 
@@ -98,6 +109,36 @@ def test_agent_run_single_endpoint_returns_agui_sse_events():
     assert '"type":"RUN_FINISHED"' in content
 
 
+def test_agent_run_rest_endpoint_returns_agui_sse_events():
+    response = client.post(
+        "/copilotkit/agent/chart-agent/run",
+        json={
+            "threadId": "thread-rest",
+            "runId": "run-rest",
+            "messages": [
+                {
+                    "id": "user-message-rest",
+                    "role": "user",
+                    "content": "看最近30天各渠道销售额",
+                }
+            ],
+            "forwardedProps": {
+                "pageContext": {"source": "test-rest"},
+                "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    content = response.text
+    assert '"type":"RUN_STARTED"' in content
+    assert '"threadId":"thread-rest"' in content
+    assert "执行状态：正在解析用户需求" in content
+    assert "chart-agent-action" in content
+    assert '"type":"RUN_FINISHED"' in content
+
+
 def test_agent_run_uses_forwarded_current_chart_context():
     chart = _create_chart()
 
@@ -129,6 +170,24 @@ def test_agent_run_uses_forwarded_current_chart_context():
     content = response.text
     assert '"type":"TEXT_MESSAGE_CONTENT"' in content
     assert "chart-agent-action" in content
+
+
+def test_agent_connect_rest_endpoint_returns_agui_sse_events():
+    response = client.post(
+        "/copilotkit/agent/chart-agent/connect",
+        json={
+            "threadId": "thread-rest-connect",
+            "runId": "run-rest-connect",
+            "messages": [],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    content = response.text
+    assert '"type":"RUN_STARTED"' in content
+    assert '"threadId":"thread-rest-connect"' in content
+    assert '"type":"RUN_FINISHED"' in content
 
 
 def test_unknown_copilotkit_method_is_not_supported():

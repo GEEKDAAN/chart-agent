@@ -31,6 +31,32 @@ def list_threads(
     }
 
 
+@router.get("/info")
+def get_runtime_info(response: Response) -> dict[str, Any]:
+    response.headers["X-CopilotKit-Runtime-Version"] = RUNTIME_VERSION
+    return _runtime_info()
+
+
+@router.post("/agent/{agent_id}/run")
+def run_agent(agent_id: str, body: dict[str, Any]) -> StreamingResponse:
+    return _generate_agent_run_stream(
+        {
+            "params": {"agentId": agent_id},
+            "body": body,
+        }
+    )
+
+
+@router.post("/agent/{agent_id}/connect")
+def connect_agent(agent_id: str, body: dict[str, Any]) -> StreamingResponse:
+    return _generate_agent_connect_stream(
+        {
+            "params": {"agentId": agent_id},
+            "body": body,
+        }
+    )
+
+
 @router.post("")
 def copilotkit_runtime(payload: dict[str, Any], response: Response) -> Any:
     response.headers["X-CopilotKit-Runtime-Version"] = RUNTIME_VERSION

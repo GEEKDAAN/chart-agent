@@ -75,8 +75,11 @@ OPENAI_BASE_URL=https://ai.allrealai.com/v1
 后端提供 `/copilotkit` 作为 CopilotKit v2 single-endpoint Runtime 端点，当前支持：
 
 - Runtime Info：`POST /copilotkit`，请求体为 `{ "method": "info" }`
+- Runtime Info：`GET /copilotkit/info`
 - Agent 连接：`POST /copilotkit`，请求体为 `{ "method": "agent/connect", ... }`
+- Agent 连接：`POST /copilotkit/agent/{agent_id}/connect`
 - Agent 运行：`POST /copilotkit`，请求体为 `{ "method": "agent/run", ... }`
+- Agent 运行：`POST /copilotkit/agent/{agent_id}/run`
 
 `agent/run` 会读取 CopilotKit 消息中的最后一条用户文本，并结合前端传入的当前图表上下文，转接到现有 `ChartAgent` workflow。
 

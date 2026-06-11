@@ -33,6 +33,22 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.9.6] - 2026-06-11
+
+- 【后端】
+  1. 新增 `GET /copilotkit/info` Runtime Info 端点，兼容 CopilotKit 前端初始化时的直接信息探测请求。
+  2. 新增 `POST /copilotkit/agent/{agent_id}/run` 和 `POST /copilotkit/agent/{agent_id}/connect`，兼容 CopilotKit 前端在 Runtime Info 探测成功后的 REST Agent 调用路径。
+  3. 保留 `POST /copilotkit` 的 single-endpoint 入口，避免破坏现有调用方式。
+  4. 更新 FastAPI 应用版本为 `0.9.6`。
+
+- 【前端】
+  1. 新增前端 favicon，避免浏览器默认请求 `/favicon.ico` 产生 404 噪音。
+  2. 更新前端版本号和界面版本标识为 `0.9.6`。
+
+- 【测试】
+  1. 新增 `/copilotkit/info` 测试，覆盖响应结构和 Runtime 版本响应头。
+  2. 新增 CopilotKit REST Agent run/connect 测试，覆盖前端真实调用路径。
+
 ## [0.9.5] - 2026-06-11
 
 - 【后端】
