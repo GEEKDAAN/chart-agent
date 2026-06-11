@@ -110,3 +110,14 @@ http://localhost:5173
 ## 更新日志
 
 项目变更记录在 `CHANGELOG.md` 中。新增版本记录时，请遵循其中定义的中文模块分组格式。
+
+## 自动化测试
+
+前端端到端测试使用 Playwright 维护，覆盖 CopilotKit 侧边栏、Runtime REST 请求、图表生成编辑和上下文传递链路。
+
+```bash
+cd frontend
+npm.cmd run test:e2e
+```
+
+测试默认会自动启动或复用 `127.0.0.1:8004` 后端和 `127.0.0.1:5178` 前端服务，并以 `CHART_AGENT_LLM_MODE=off` 运行，避免外部 LLM 影响本地验证稳定性。

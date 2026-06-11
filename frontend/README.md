@@ -33,3 +33,26 @@ npm run dev
 npm.cmd install
 npm.cmd run dev
 ```
+
+## 端到端测试
+
+前端新增 Playwright E2E 测试，用于验证 CopilotKit 侧边栏到后端 Runtime、图表生成、图表编辑和上下文传递的完整链路。
+
+```bash
+cd frontend
+npm.cmd run test:e2e
+```
+
+默认端口：
+
+```bash
+E2E_FRONTEND_PORT=5178
+E2E_BACKEND_PORT=8004
+```
+
+测试配置会自动启动或复用本地服务：
+
+- 后端：`python -m uvicorn app.main:app --host 127.0.0.1 --port 8004`
+- 前端：`npm.cmd run dev -- --host 127.0.0.1 --port 5178`
+
+测试环境默认设置 `CHART_AGENT_LLM_MODE=off`，确保自动化测试走确定性规则链路，不依赖外部 LLM 服务。当前配置优先使用本机 Chrome；如果其他机器没有安装 Chrome，需要先安装 Playwright 浏览器或调整 `playwright.config.ts` 的浏览器配置。
