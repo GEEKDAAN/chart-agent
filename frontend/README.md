@@ -8,6 +8,7 @@ React + Vite 前端 MVP，负责维护 `ChartSpec`、调用后端图表 Agent、
 
 ```bash
 VITE_COPILOT_RUNTIME_URL=http://localhost:8000/copilotkit
+VITE_BACKEND_PROXY_URL=http://localhost:8000
 ```
 
 侧边栏请求会携带当前 `ChartSpec` 上下文到后端 Runtime。前端会同时通过 CopilotKit `properties`、readable context 和 Runtime 请求体补丁传递当前图表，避免不同 CopilotKit 请求结构下丢失上下文。
