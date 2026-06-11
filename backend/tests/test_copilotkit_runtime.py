@@ -91,6 +91,9 @@ def test_agent_run_single_endpoint_returns_agui_sse_events():
     content = response.text
     assert '"type":"RUN_STARTED"' in content
     assert '"type":"TEXT_MESSAGE_CONTENT"' in content
+    assert "执行状态：正在解析用户需求" in content
+    assert "执行状态：正在运行后端 ChartAgent workflow" in content
+    assert "执行状态：已生成图表变更" in content
     assert "chart-agent-action" in content
     assert '"type":"RUN_FINISHED"' in content
 
@@ -138,6 +141,30 @@ def test_unknown_copilotkit_method_is_not_supported():
     assert response.json() == {
         "errors": [{"message": "Unsupported CopilotKit method: agent/unknown"}],
     }
+
+
+def test_agent_run_streams_failure_status_when_user_message_is_missing():
+    response = client.post(
+        "/copilotkit",
+        json={
+            "method": "agent/run",
+            "params": {"agentId": "chart-agent"},
+            "body": {
+                "threadId": "thread-error",
+                "runId": "run-error",
+                "messages": [],
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    content = response.text
+    assert '"type":"RUN_STARTED"' in content
+    assert "执行状态：正在解析用户需求" in content
+    assert "执行状态：处理失败" in content
+    assert "CopilotKit agent/run request does not contain a user text message" in content
+    assert '"type":"RUN_ERROR"' in content
 
 
 def _create_chart() -> dict:

@@ -1,5 +1,6 @@
 import base64
 import json
+from collections.abc import Iterable
 from typing import Any
 from uuid import uuid4
 
@@ -54,21 +55,12 @@ def copilotkit_runtime(payload: dict[str, Any], response: Response) -> Any:
 
 def _generate_agent_run_stream(payload: dict[str, Any]) -> StreamingResponse:
     body = payload.get("body") or {}
-    params = payload.get("params") or {}
     thread_id = str(body.get("threadId") or f"copilotkit-{uuid4()}")
     run_id = str(body.get("runId") or f"run-{uuid4()}")
     message_id = f"msg-{uuid4()}"
 
-    try:
-        chart_request = _to_chart_agent_request_from_agui(body, thread_id)
-        chart_response = run_chart_agent(chart_request)
-        content = _format_chart_agent_response(chart_response.model_dump(by_alias=True))
-        events = _agui_success_events(thread_id, run_id, message_id, content, body)
-    except (ValueError, ValidationError) as error:
-        events = _agui_error_events(thread_id, run_id, str(error), body)
-
     return StreamingResponse(
-        _sse_events(events),
+        _sse_events(_agui_agent_run_events(thread_id, run_id, message_id, body)),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -177,64 +169,67 @@ def _strip_context_marker(content: str) -> str:
     return (content[:start] + content[end + 4 :]).strip()
 
 
-def _agui_success_events(
+def _agui_agent_run_events(
     thread_id: str,
     run_id: str,
     message_id: str,
-    content: str,
     body: dict[str, Any],
-) -> list[dict[str, Any]]:
-    return [
-        {
-            "type": "RUN_STARTED",
-            "threadId": thread_id,
-            "runId": run_id,
-            "input": body,
-        },
-        {
-            "type": "TEXT_MESSAGE_START",
-            "messageId": message_id,
-            "role": "assistant",
-        },
-        {
-            "type": "TEXT_MESSAGE_CONTENT",
-            "messageId": message_id,
-            "delta": content,
-        },
-        {
+) -> Iterable[dict[str, Any]]:
+    yield {
+        "type": "RUN_STARTED",
+        "threadId": thread_id,
+        "runId": run_id,
+        "input": body,
+    }
+    yield {
+        "type": "TEXT_MESSAGE_START",
+        "messageId": message_id,
+        "role": "assistant",
+    }
+
+    try:
+        yield _text_delta(message_id, "执行状态：正在解析用户需求...\n")
+        chart_request = _to_chart_agent_request_from_agui(body, thread_id)
+
+        yield _text_delta(message_id, "执行状态：已读取当前图表上下文，正在规划数据需求...\n")
+        yield _text_delta(message_id, "执行状态：正在运行后端 ChartAgent workflow...\n")
+        chart_response = run_chart_agent(chart_request)
+
+        yield _text_delta(message_id, "执行状态：已生成图表变更，正在同步到前端...\n\n")
+        content = _format_chart_agent_response(chart_response.model_dump(by_alias=True))
+        yield _text_delta(message_id, content)
+        yield {
             "type": "TEXT_MESSAGE_END",
             "messageId": message_id,
-        },
-        {
+        }
+        yield {
             "type": "RUN_FINISHED",
             "threadId": thread_id,
             "runId": run_id,
-        },
-    ]
-
-
-def _agui_error_events(
-    thread_id: str,
-    run_id: str,
-    message: str,
-    body: dict[str, Any],
-) -> list[dict[str, Any]]:
-    return [
-        {
-            "type": "RUN_STARTED",
-            "threadId": thread_id,
-            "runId": run_id,
-            "input": body,
-        },
-        {
+        }
+    except (ValueError, ValidationError) as error:
+        message = str(error)
+        yield _text_delta(message_id, f"执行状态：处理失败。\n\n失败原因：{message}")
+        yield {
+            "type": "TEXT_MESSAGE_END",
+            "messageId": message_id,
+        }
+        yield {
             "type": "RUN_ERROR",
             "message": message,
             "code": "chart_agent_error",
-        },
-    ]
+        }
 
 
-def _sse_events(events: list[dict[str, Any]]):
+def _text_delta(message_id: str, delta: str) -> dict[str, Any]:
+    return {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": message_id,
+        "delta": delta,
+    }
+
+
+def _sse_events(events: Iterable[dict[str, Any]]):
     for event in events:
         yield f"data: {json.dumps(event, ensure_ascii=False, separators=(',', ':'))}\n\n"
 

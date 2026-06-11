@@ -89,7 +89,7 @@ OPENAI_BASE_URL=https://ai.allrealai.com/v1
 - `variables.data.frontend.chartAgentContext`
 - 消息中的隐藏 `chart-agent-context` 标记
 
-当前版本会通过 SSE 返回 `RUN_STARTED`、`TEXT_MESSAGE_START`、`TEXT_MESSAGE_CONTENT`、`TEXT_MESSAGE_END` 和 `RUN_FINISHED` 事件，并在 assistant 文本响应中附带不可见的 `ChartAgentAction` 标记，前端会解析该标记并自动应用图表变更。
+当前版本会通过 SSE 返回 `RUN_STARTED`、`TEXT_MESSAGE_START`、`TEXT_MESSAGE_CONTENT`、`TEXT_MESSAGE_END` 和 `RUN_FINISHED` 事件。`agent/run` 会在同一条 assistant 消息中分段输出执行状态，包括需求解析、上下文读取、workflow 运行、图表同步和失败原因；最终响应会附带不可见的 `ChartAgentAction` 标记，前端会解析该标记并自动应用图表变更。
 
 ## 本地运行
 
