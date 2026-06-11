@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef } from "react";
 import {
   CopilotKitProvider,
   CopilotSidebar,
+  useRenderTool,
   useAgent,
   useAgentContext,
   useConfigureSuggestions
 } from "@copilotkit/react-core/v2";
+import { z } from "zod";
 import "@copilotkit/react-core/v2/styles.css";
 
 import { copilotRuntimeUrl, isCopilotEnabled } from "../lib/config";
@@ -29,6 +31,19 @@ type CopilotKitPanelProps = {
   onApplyAction: (action: ChartAgentAction) => void;
   onApplyError: (error: unknown) => void;
 };
+
+const progressStepSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  detail: z.string(),
+  status: z.enum(["pending", "running", "completed", "failed"])
+});
+
+const progressParametersSchema = z.object({
+  steps: z.array(progressStepSchema)
+});
+
+type ProgressStep = z.infer<typeof progressStepSchema>;
 
 const suggestions = [
   { title: "生成图表", message: "看最近30天各渠道销售额" },
@@ -60,6 +75,7 @@ export function CopilotKitPanel({ chart, onApplyAction, onApplyError }: CopilotK
       }}
     >
       <CopilotRuntimeContextBridge context={runtimeContext} />
+      <ChartAgentProgressRenderer />
       <CopilotActionBridge onApplyAction={onApplyAction} onApplyError={onApplyError} />
       <CopilotSidebar
         agentId="chart-agent"
@@ -130,6 +146,60 @@ function CopilotActionBridge({
   }, [agent.messages, onApplyAction, onApplyError]);
 
   return null;
+}
+
+function ChartAgentProgressRenderer() {
+  useRenderTool({
+    name: "chartAgentProgress",
+    parameters: progressParametersSchema,
+    render: ({ status, parameters, result }) => {
+      const resultSteps = readProgressSteps(result);
+      const steps = resultSteps.length > 0 ? resultSteps : parameters.steps ?? [];
+      return <ChatProgressSteps status={status} steps={steps} />;
+    }
+  });
+
+  return null;
+}
+
+function ChatProgressSteps({ status, steps }: { status: string; steps: ProgressStep[] }) {
+  const label = status === "complete" ? "已完成" : "执行中";
+
+  return (
+    <section className="chat-progress" aria-label="执行步骤">
+      <div className="chat-progress-header">
+        <h3>执行步骤</h3>
+        <span>{label}</span>
+      </div>
+      <ol className="chat-progress-list">
+        {steps.map((step, index) => (
+          <li className={`chat-progress-step chat-progress-step-${step.status}`} key={step.id}>
+            <span className="chat-progress-index">{step.status === "completed" ? "✓" : index + 1}</span>
+            <div>
+              <strong>{step.title}</strong>
+              <p>{step.detail}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function readProgressSteps(result: unknown): ProgressStep[] {
+  if (!result) return [];
+
+  const parsed = typeof result === "string" ? safeJsonParse(result) : result;
+  const validation = progressParametersSchema.safeParse(parsed);
+  return validation.success ? validation.data.steps : [];
+}
+
+function safeJsonParse(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }
 
 function toJsonSerializable(value: unknown): JsonSerializable {

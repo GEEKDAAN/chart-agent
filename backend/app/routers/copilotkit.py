@@ -86,7 +86,7 @@ def _generate_agent_run_stream(payload: dict[str, Any]) -> StreamingResponse:
     message_id = f"msg-{uuid4()}"
 
     return StreamingResponse(
-        _sse_events(_agui_agent_run_events(thread_id, run_id, message_id, body)),
+        _sse_events(_structured_agui_agent_run_events(thread_id, run_id, message_id, body)),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -195,12 +195,13 @@ def _strip_context_marker(content: str) -> str:
     return (content[:start] + content[end + 4 :]).strip()
 
 
-def _agui_agent_run_events(
+def _structured_agui_agent_run_events(
     thread_id: str,
     run_id: str,
     message_id: str,
     body: dict[str, Any],
 ) -> Iterable[dict[str, Any]]:
+    tool_call_id = f"tool-{uuid4()}"
     yield {
         "type": "RUN_STARTED",
         "threadId": thread_id,
@@ -214,14 +215,13 @@ def _agui_agent_run_events(
     }
 
     try:
-        yield _text_delta(message_id, "执行状态：正在解析用户需求...\n")
+        yield _tool_call_start(message_id, tool_call_id, _progress_steps("running"))
+        yield _tool_call_args(tool_call_id, _progress_steps("running"))
         chart_request = _to_chart_agent_request_from_agui(body, thread_id)
-
-        yield _text_delta(message_id, "执行状态：已读取当前图表上下文，正在规划数据需求...\n")
-        yield _text_delta(message_id, "执行状态：正在运行后端 ChartAgent workflow...\n")
         chart_response = run_chart_agent(chart_request)
 
-        yield _text_delta(message_id, "执行状态：已生成图表变更，正在同步到前端...\n\n")
+        yield _tool_call_end(tool_call_id)
+        yield _tool_call_result(tool_call_id, _progress_steps("completed"))
         content = _format_chart_agent_response(chart_response.model_dump(by_alias=True))
         yield _text_delta(message_id, content)
         yield {
@@ -235,7 +235,9 @@ def _agui_agent_run_events(
         }
     except (ValueError, ValidationError) as error:
         message = str(error)
-        yield _text_delta(message_id, f"执行状态：处理失败。\n\n失败原因：{message}")
+        yield _tool_call_end(tool_call_id)
+        yield _tool_call_result(tool_call_id, _progress_steps("failed", message))
+        yield _text_delta(message_id, f"处理失败：{message}")
         yield {
             "type": "TEXT_MESSAGE_END",
             "messageId": message_id,
@@ -253,6 +255,104 @@ def _text_delta(message_id: str, delta: str) -> dict[str, Any]:
         "messageId": message_id,
         "delta": delta,
     }
+
+
+def _tool_call_start(message_id: str, tool_call_id: str, parameters: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "type": "TOOL_CALL_START",
+        "toolCallId": tool_call_id,
+        "toolCallName": "chartAgentProgress",
+        "parentMessageId": message_id,
+        "timestamp": _event_timestamp(),
+        "rawEvent": {"parameters": parameters},
+    }
+
+
+def _tool_call_args(tool_call_id: str, parameters: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": tool_call_id,
+        "delta": json.dumps(parameters, ensure_ascii=False, separators=(",", ":")),
+        "timestamp": _event_timestamp(),
+    }
+
+
+def _tool_call_end(tool_call_id: str) -> dict[str, Any]:
+    return {
+        "type": "TOOL_CALL_END",
+        "toolCallId": tool_call_id,
+        "timestamp": _event_timestamp(),
+    }
+
+
+def _tool_call_result(tool_call_id: str, result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "type": "TOOL_CALL_RESULT",
+        "messageId": f"tool-result-{tool_call_id}",
+        "toolCallId": tool_call_id,
+        "content": json.dumps(result, ensure_ascii=False, separators=(",", ":")),
+        "role": "tool",
+        "timestamp": _event_timestamp(),
+    }
+
+
+def _progress_steps(state: str, error_message: str | None = None) -> dict[str, Any]:
+    if state == "failed":
+        parse_status = "failed"
+        parse_detail = f"处理失败：{error_message}" if error_message else "处理失败"
+        other_status = "pending"
+    elif state == "completed":
+        parse_status = "completed"
+        parse_detail = "已完成需求解析"
+        other_status = "completed"
+    else:
+        parse_status = "running"
+        parse_detail = "正在识别图表意图、指标和维度"
+        other_status = "pending"
+
+    steps = [
+        {
+            "id": "parse_request",
+            "title": "解析用户需求",
+            "detail": parse_detail,
+            "status": parse_status,
+        },
+        {
+            "id": "read_context",
+            "title": "读取图表上下文",
+            "detail": "已读取当前图表上下文" if state == "completed" else "等待需求解析完成",
+            "status": other_status,
+        },
+        {
+            "id": "plan_data",
+            "title": "规划数据需求",
+            "detail": "已完成指标、维度和筛选条件规划" if state == "completed" else "等待规划数据需求",
+            "status": other_status,
+        },
+        {
+            "id": "run_workflow",
+            "title": "运行 Agent Workflow",
+            "detail": "后端 ChartAgent workflow 已完成" if state == "completed" else "等待运行后端 workflow",
+            "status": other_status,
+        },
+        {
+            "id": "generate_action",
+            "title": "生成图表变更",
+            "detail": "已生成图表变更指令" if state == "completed" else "等待生成图表变更",
+            "status": other_status,
+        },
+        {
+            "id": "sync_frontend",
+            "title": "同步到前端",
+            "detail": "图表变更已同步到前端" if state == "completed" else "等待同步到前端",
+            "status": other_status,
+        },
+    ]
+    return {"steps": steps}
+
+
+def _event_timestamp() -> int:
+    return 0
 
 
 def _sse_events(events: Iterable[dict[str, Any]]):
@@ -311,5 +411,9 @@ def _format_chart_agent_response(response: dict[str, Any]) -> str:
 
 
 def _encode_action_marker(action: dict[str, Any]) -> str:
-    raw = json.dumps(action, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return _encode_marker(action)
+
+
+def _encode_marker(value: dict[str, Any]) -> str:
+    raw = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     return base64.b64encode(raw).decode("ascii")

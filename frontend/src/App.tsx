@@ -24,6 +24,11 @@ export function App() {
     [chart]
   );
 
+  const handleApplyError = useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message : "CopilotKit 图表应用失败";
+    setStatus(message);
+  }, []);
+
   return (
     <main className="app-shell">
       <section className="workspace">
@@ -33,7 +38,7 @@ export function App() {
             <p>{status}</p>
           </div>
           <div className="topbar-badges">
-            <span className="status-pill">v0.9.7</span>
+            <span className="status-pill">v0.9.8</span>
             <span className="status-pill">{isCopilotEnabled ? "CopilotKit 已启用" : "CopilotKit 未配置"}</span>
           </div>
         </header>
@@ -46,7 +51,7 @@ export function App() {
           <CopilotKitPanel
             chart={chart}
             onApplyAction={applyAgentAction}
-            onApplyError={(error) => setStatus(error instanceof Error ? error.message : "CopilotKit 图表应用失败")}
+            onApplyError={handleApplyError}
           />
         </Suspense>
       ) : null}

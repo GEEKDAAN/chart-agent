@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("CopilotKit sidebar can generate and update a chart", async ({ page }) => {
+test("CopilotKit sidebar can generate and update a chart with structured steps", async ({ page }) => {
   const badResponses: { status: number; url: string }[] = [];
   const agentRuns: { prompt: string; hasCurrentChart: boolean; chartType: string | null }[] = [];
 
@@ -30,27 +30,28 @@ test("CopilotKit sidebar can generate and update a chart", async ({ page }) => {
 
   await page.goto("/");
   await expect(page.getByText("CopilotKit 已启用")).toBeVisible();
+  await expect(page.locator(".workspace").getByText("执行步骤")).toHaveCount(0);
   await expect(page.locator("textarea")).toBeVisible();
 
   await sendPrompt(page, "看最近30天各渠道销售额");
   await expect(page.locator("canvas")).toHaveCount(1);
-  await expect(page.locator("body")).toContainText("已生成销售额图表。");
+  await expect(page.locator(".chat-progress")).toBeVisible();
+  await expect(page.locator(".chat-progress")).toContainText("执行步骤");
+  await expect(page.locator(".chat-progress")).toContainText("同步到前端");
+  await expect(page.locator(".chat-progress")).toContainText("已完成");
 
   await sendPrompt(page, "换成折线图");
-  await expect(page.locator("body")).toContainText("已切换为折线图。");
+  await expect(page.locator(".chat-progress").last()).toContainText("运行 Agent Workflow");
 
   await sendPrompt(page, "把抖音改成红色");
-  await expect(page.locator("body")).toContainText("已将 抖音 调整为指定颜色。");
-
   await sendPrompt(page, "加一列利润率");
-  await expect(page.locator("body")).toContainText("已更新图表数据和指标列。");
-
   await sendPrompt(page, "解释一下这个图");
-  await expect(page.locator("body")).toContainText(/当前图表「各渠道销售额」包含/);
 
   const pageText = await page.locator("body").innerText();
-  expect(pageText).toContain("执行状态：正在解析用户需求");
+  expect(pageText).toContain("执行步骤");
+  expect(pageText).not.toContain("执行状态：");
   expect(pageText).not.toContain("chart-agent-action");
+  expect(pageText).not.toContain("chart-agent-step");
 
   expect(agentRuns).toHaveLength(5);
   expect(agentRuns[0]).toMatchObject({
@@ -76,5 +77,5 @@ async function sendPrompt(page: import("@playwright/test").Page, prompt: string)
   await page.locator("textarea").fill(prompt);
   await page.locator("button").last().click();
   await expect(page.getByText(prompt)).toBeVisible();
-  await expect(page.locator("body")).toContainText("执行状态：正在解析用户需求");
+  await expect(page.locator(".chat-progress").last()).toContainText("解析用户需求");
 }

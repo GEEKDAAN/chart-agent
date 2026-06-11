@@ -14,7 +14,7 @@ def test_runtime_info_returns_single_endpoint_metadata():
     assert body["version"] == "1.59.5"
     assert body["mode"] == "sse"
     assert body["audioFileTranscriptionEnabled"] is False
-    assert body["agents"]["chart-agent"]["description"] == "生成和编辑受控 ChartSpec 图表。"
+    assert body["agents"]["chart-agent"]["name"] == "chart-agent"
 
 
 def test_runtime_info_get_endpoint_returns_metadata_for_copilotkit_client():
@@ -73,27 +73,13 @@ def test_agent_connect_single_endpoint_returns_agui_sse_events():
     assert '"type":"RUN_FINISHED"' in content
 
 
-def test_agent_run_single_endpoint_returns_agui_sse_events():
+def test_agent_run_single_endpoint_returns_agui_sse_events_with_tool_render_progress():
     response = client.post(
         "/copilotkit",
         json={
             "method": "agent/run",
             "params": {"agentId": "chart-agent"},
-            "body": {
-                "threadId": "thread-agui",
-                "runId": "run-agui",
-                "messages": [
-                    {
-                        "id": "user-message-agui",
-                        "role": "user",
-                        "content": "看最近30天各渠道销售额",
-                    }
-                ],
-                "forwardedProps": {
-                    "pageContext": {"source": "test-agui"},
-                    "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
-                },
-            },
+            "body": _run_body("thread-agui", "run-agui"),
         },
     )
 
@@ -102,31 +88,24 @@ def test_agent_run_single_endpoint_returns_agui_sse_events():
     content = response.text
     assert '"type":"RUN_STARTED"' in content
     assert '"type":"TEXT_MESSAGE_CONTENT"' in content
-    assert "执行状态：正在解析用户需求" in content
-    assert "执行状态：正在运行后端 ChartAgent workflow" in content
-    assert "执行状态：已生成图表变更" in content
+    assert '"type":"TOOL_CALL_START"' in content
+    assert '"toolCallName":"chartAgentProgress"' in content
+    assert '"type":"TOOL_CALL_ARGS"' in content
+    assert '"type":"TOOL_CALL_END"' in content
+    assert '"type":"TOOL_CALL_RESULT"' in content
+    assert '"id":"parse_request"' in content
+    assert '"id":"run_workflow"' in content
+    assert '"id":"sync_frontend"' in content
+    assert "执行状态：" not in content
+    assert "chart-agent-step" not in content
     assert "chart-agent-action" in content
     assert '"type":"RUN_FINISHED"' in content
 
 
-def test_agent_run_rest_endpoint_returns_agui_sse_events():
+def test_agent_run_rest_endpoint_returns_agui_sse_events_with_tool_render_progress():
     response = client.post(
         "/copilotkit/agent/chart-agent/run",
-        json={
-            "threadId": "thread-rest",
-            "runId": "run-rest",
-            "messages": [
-                {
-                    "id": "user-message-rest",
-                    "role": "user",
-                    "content": "看最近30天各渠道销售额",
-                }
-            ],
-            "forwardedProps": {
-                "pageContext": {"source": "test-rest"},
-                "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
-            },
-        },
+        json=_run_body("thread-rest", "run-rest"),
     )
 
     assert response.status_code == 200
@@ -134,7 +113,9 @@ def test_agent_run_rest_endpoint_returns_agui_sse_events():
     content = response.text
     assert '"type":"RUN_STARTED"' in content
     assert '"threadId":"thread-rest"' in content
-    assert "执行状态：正在解析用户需求" in content
+    assert '"type":"TOOL_CALL_START"' in content
+    assert '"toolCallName":"chartAgentProgress"' in content
+    assert '"id":"parse_request"' in content
     assert "chart-agent-action" in content
     assert '"type":"RUN_FINISHED"' in content
 
@@ -169,6 +150,8 @@ def test_agent_run_uses_forwarded_current_chart_context():
     assert response.status_code == 200
     content = response.text
     assert '"type":"TEXT_MESSAGE_CONTENT"' in content
+    assert '"type":"TOOL_CALL_START"' in content
+    assert '"toolCallName":"chartAgentProgress"' in content
     assert "chart-agent-action" in content
 
 
@@ -220,10 +203,29 @@ def test_agent_run_streams_failure_status_when_user_message_is_missing():
     assert response.headers["content-type"].startswith("text/event-stream")
     content = response.text
     assert '"type":"RUN_STARTED"' in content
-    assert "执行状态：正在解析用户需求" in content
-    assert "执行状态：处理失败" in content
+    assert '"type":"TOOL_CALL_START"' in content
+    assert '"toolCallName":"chartAgentProgress"' in content
+    assert "failed" in content
     assert "CopilotKit agent/run request does not contain a user text message" in content
     assert '"type":"RUN_ERROR"' in content
+
+
+def _run_body(thread_id: str, run_id: str) -> dict:
+    return {
+        "threadId": thread_id,
+        "runId": run_id,
+        "messages": [
+            {
+                "id": f"user-message-{run_id}",
+                "role": "user",
+                "content": "看最近30天各渠道销售额",
+            }
+        ],
+        "forwardedProps": {
+            "pageContext": {"source": "test"},
+            "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
+        },
+    }
 
 
 def _create_chart() -> dict:

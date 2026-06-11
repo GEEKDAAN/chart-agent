@@ -19,6 +19,12 @@ VITE_BACKEND_PROXY_URL=http://localhost:8000
 
 当前版本不再保留普通对话框 fallback，页面生成和编辑图表都通过 CopilotKit 侧边栏完成。
 
+## 聊天内执行步骤
+
+CopilotKit 聊天消息内会展示结构化执行步骤，用于说明当前 Agent 请求的处理进度。内容包含需求解析、图表上下文读取、数据需求规划、后端 workflow 运行、图表变更生成和前端同步。
+
+步骤数据来自后端 Runtime 输出的 AG-UI tool call 事件，前端通过 CopilotKit `useRenderTool` 注册 `chartAgentProgress` 渲染器展示。当前实现不再维护主工作区外置步骤面板，也不再使用 `chart-agent-step` 隐藏 marker。
+
 ## 本地运行
 
 ```bash

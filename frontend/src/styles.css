@@ -77,6 +77,95 @@ textarea {
   color: #718096;
 }
 
+.chat-progress {
+  width: 100%;
+  border: 1px solid #dce3ee;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.chat-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.chat-progress-header h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 14px;
+}
+
+.chat-progress-header span {
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: #40506a;
+  background: #eef2f7;
+  font-size: 12px;
+}
+
+.chat-progress-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-progress-step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.chat-progress-index {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 50%;
+  color: #647084;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chat-progress-step strong {
+  display: block;
+  color: #1f2a3d;
+  font-size: 13px;
+}
+
+.chat-progress-step p {
+  margin: 3px 0 0;
+  color: #647084;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.chat-progress-step-running .chat-progress-index {
+  border-color: #2563eb;
+  color: #fff;
+  background: #2563eb;
+}
+
+.chat-progress-step-completed .chat-progress-index {
+  border-color: #16a34a;
+  color: #fff;
+  background: #16a34a;
+}
+
+.chat-progress-step-failed .chat-progress-index {
+  border-color: #dc2626;
+  color: #fff;
+  background: #dc2626;
+}
+
 .table-wrap {
   overflow: auto;
 }
@@ -104,4 +193,5 @@ th {
     align-items: flex-start;
     flex-direction: column;
   }
+
 }

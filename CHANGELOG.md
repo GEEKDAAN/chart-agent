@@ -33,6 +33,21 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.9.8] - 2026-06-11
+
+- 【前端】：
+  1. 新增 `useRenderTool` 渲染器 `chartAgentProgress`，在 CopilotKit 原生聊天消息内展示结构化执行步骤。
+  2. 移除主工作区外置步骤面板，避免执行状态脱离 CopilotKit 对话上下文。
+  3. 新增 `zod` 显式依赖，用于维护 CopilotKit 工具渲染参数 schema。
+  4. 更新前端版本号和界面版本标识为 `0.9.8`。
+- 【后端】：
+  1. CopilotKit `agent/run` SSE 改为输出 AG-UI `TOOL_CALL_START`、`TOOL_CALL_ARGS`、`TOOL_CALL_END` 和 `TOOL_CALL_RESULT` 事件，供前端 `useRenderTool` 原生渲染。
+  2. 移除普通文本形式的“执行状态”输出和 `chart-agent-step` 隐藏 marker，保留 `chart-agent-action` 隐藏 action marker 用于自动应用图表变更。
+  3. 更新 FastAPI 应用版本为 `0.9.8`。
+- 【测试】：
+  1. 更新 CopilotKit Runtime 测试，覆盖工具调用事件输出和旧状态文本不再输出。
+  2. 更新 Playwright E2E 测试，校验步骤在 CopilotKit 聊天内展示、图表生成编辑、上下文传递和隐藏 marker 不外显。
+
 ## [0.9.7] - 2026-06-11
 
 - 【前端】：

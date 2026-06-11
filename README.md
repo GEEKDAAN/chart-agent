@@ -96,6 +96,7 @@ http://localhost:5173
 - CopilotKit 前端侧边栏
 - CopilotKit Runtime 最小兼容端点
 - CopilotKit 图表 action 自动应用
+- CopilotKit 聊天内结构化执行步骤渲染
 - 非流式 JSON 响应
 
 ## 暂不包含
