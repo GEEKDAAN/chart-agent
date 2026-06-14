@@ -235,16 +235,17 @@ def _structured_agui_agent_run_events(
         chart_request = _to_chart_agent_request_from_agui(body, thread_id)
         decision = _decide_runtime_tool(chart_request)
         intent = decision.intent
+        tool_name = decision.toolName
 
-        if _should_render_progress(intent):
-            yield _tool_call_start(message_id, tool_call_id, _progress_steps("running"))
-            yield _tool_call_args(tool_call_id, _progress_steps("running"))
+        if _should_render_progress(tool_name):
+            yield _tool_call_start(message_id, tool_call_id, _progress_steps(tool_name, "running"))
+            yield _tool_call_args(tool_call_id, _progress_steps(tool_name, "running"))
 
         chart_response = run_chart_agent(chart_request, initial_decision=decision)
 
-        if _should_render_progress(intent):
+        if _should_render_progress(tool_name):
             yield _tool_call_end(tool_call_id)
-            yield _tool_call_result(tool_call_id, _progress_steps("completed"))
+            yield _tool_call_result(tool_call_id, _progress_steps(tool_name, "completed"))
 
         content = _format_chart_agent_response(chart_response.model_dump(by_alias=True))
         yield _text_delta(message_id, content)
@@ -271,8 +272,8 @@ def _structured_agui_agent_run_events(
         }
 
 
-def _should_render_progress(intent: Intent) -> bool:
-    return intent in {"create_chart", "update_style", "update_data", "change_chart_type"}
+def _should_render_progress(tool_name: str) -> bool:
+    return tool_name in {"create_chart", "update_style", "update_data", "change_chart_type"}
 
 
 def _decide_runtime_tool(chart_request: ChartAgentRequest):
@@ -339,7 +340,7 @@ def _tool_call_result(tool_call_id: str, result: dict[str, Any]) -> dict[str, An
     }
 
 
-def _progress_steps(state: str, error_message: str | None = None) -> dict[str, Any]:
+def _legacy_progress_steps(state: str, error_message: str | None = None) -> dict[str, Any]:
     if state == "failed":
         parse_status = "failed"
         parse_detail = f"处理失败：{error_message}" if error_message else "处理失败"
@@ -391,6 +392,56 @@ def _progress_steps(state: str, error_message: str | None = None) -> dict[str, A
             "status": other_status,
         },
     ]
+    return {"steps": steps}
+
+
+def _progress_steps(tool_name: str, state: str, error_message: str | None = None) -> dict[str, Any]:
+    templates = {
+        "create_chart": [
+            ("parse_create_request", "识别图表需求", "正在识别指标、维度和时间范围", "已识别图表生成需求"),
+            ("plan_data", "规划数据查询", "等待生成数据需求", "已完成指标、维度和筛选条件规划"),
+            ("query_data", "查询业务数据", "等待查询数据", "已获得图表所需数据"),
+            ("generate_chart", "生成图表配置", "等待生成受控 ChartSpec", "已生成图表配置"),
+            ("sync_frontend", "同步到前端", "等待应用图表", "图表已同步到前端"),
+        ],
+        "update_style": [
+            ("parse_style_request", "识别样式修改", "正在识别颜色、系列或展示样式目标", "已识别样式修改目标"),
+            ("read_current_chart", "读取当前图表", "等待读取当前 ChartSpec", "已读取当前图表上下文"),
+            ("generate_style_patch", "生成样式变更", "等待生成受控样式 patch", "已生成样式变更"),
+            ("sync_frontend", "同步到前端", "等待应用样式", "样式修改已同步到前端"),
+        ],
+        "update_data": [
+            ("parse_data_request", "识别数据修改", "正在识别新增指标或数据调整目标", "已识别数据修改需求"),
+            ("plan_data_update", "规划数据补充", "等待规划补充数据", "已完成补充数据规划"),
+            ("query_updated_data", "查询更新数据", "等待查询更新后的数据", "已获得更新后的图表数据"),
+            ("generate_data_patch", "生成数据变更", "等待生成受控数据 patch", "已生成数据变更"),
+            ("sync_frontend", "同步到前端", "等待应用数据变更", "数据修改已同步到前端"),
+        ],
+        "change_chart_type": [
+            ("parse_type_request", "识别图表类型", "正在识别目标图表类型", "已识别目标图表类型"),
+            ("read_current_chart", "读取当前图表", "等待读取当前 ChartSpec", "已读取当前图表上下文"),
+            ("validate_chart_type", "校验数据适配", "等待校验当前数据是否适合目标类型", "已完成图表类型适配校验"),
+            ("generate_type_patch", "生成类型变更", "等待生成受控类型 patch", "已生成图表类型变更"),
+            ("sync_frontend", "同步到前端", "等待应用类型变更", "图表类型已同步到前端"),
+        ],
+    }
+    template = templates.get(tool_name, templates["create_chart"])
+
+    steps = []
+    for index, (step_id, title, running_detail, completed_detail) in enumerate(template):
+        if state == "completed":
+            status = "completed"
+            detail = completed_detail
+        elif state == "failed" and index == 0:
+            status = "failed"
+            detail = f"处理失败：{error_message}" if error_message else "处理失败"
+        elif state == "running" and index == 0:
+            status = "running"
+            detail = running_detail
+        else:
+            status = "pending"
+            detail = running_detail
+        steps.append({"id": step_id, "title": title, "detail": detail, "status": status})
     return {"steps": steps}
 
 

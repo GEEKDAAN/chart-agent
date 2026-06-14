@@ -1,9 +1,52 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.routers.copilotkit import _progress_steps
 
 
 client = TestClient(app)
+
+
+def test_progress_steps_are_specific_to_tool_name():
+    create_steps = _progress_steps("create_chart", "running")["steps"]
+    update_data_steps = _progress_steps("update_data", "running")["steps"]
+    change_type_steps = _progress_steps("change_chart_type", "running")["steps"]
+
+    assert [step["id"] for step in create_steps] == [
+        "parse_create_request",
+        "plan_data",
+        "query_data",
+        "generate_chart",
+        "sync_frontend",
+    ]
+    assert [step["id"] for step in update_data_steps] == [
+        "parse_data_request",
+        "plan_data_update",
+        "query_updated_data",
+        "generate_data_patch",
+        "sync_frontend",
+    ]
+    assert [step["id"] for step in change_type_steps] == [
+        "parse_type_request",
+        "read_current_chart",
+        "validate_chart_type",
+        "generate_type_patch",
+        "sync_frontend",
+    ]
+    assert create_steps[0]["status"] == "running"
+    assert all(step["status"] == "pending" for step in create_steps[1:])
+
+
+def test_progress_steps_mark_all_steps_completed_for_final_snapshot():
+    steps = _progress_steps("update_style", "completed")["steps"]
+
+    assert [step["id"] for step in steps] == [
+        "parse_style_request",
+        "read_current_chart",
+        "generate_style_patch",
+        "sync_frontend",
+    ]
+    assert all(step["status"] == "completed" for step in steps)
 
 
 def test_runtime_info_returns_single_endpoint_metadata():
@@ -93,8 +136,9 @@ def test_agent_run_single_endpoint_returns_agui_sse_events_with_tool_render_prog
     assert '"type":"TOOL_CALL_ARGS"' in content
     assert '"type":"TOOL_CALL_END"' in content
     assert '"type":"TOOL_CALL_RESULT"' in content
-    assert '"id":"parse_request"' in content
-    assert '"id":"run_workflow"' in content
+    assert '"id":"parse_create_request"' in content
+    assert '"id":"query_data"' in content
+    assert '"id":"generate_chart"' in content
     assert '"id":"sync_frontend"' in content
     assert "执行状态：" not in content
     assert "chart-agent-step" not in content
@@ -115,7 +159,7 @@ def test_agent_run_rest_endpoint_returns_agui_sse_events_with_tool_render_progre
     assert '"threadId":"thread-rest"' in content
     assert '"type":"TOOL_CALL_START"' in content
     assert '"toolCallName":"chartAgentProgress"' in content
-    assert '"id":"parse_request"' in content
+    assert '"id":"parse_create_request"' in content
     assert "chart-agent-action" in content
     assert '"type":"RUN_FINISHED"' in content
 
@@ -152,6 +196,10 @@ def test_agent_run_uses_forwarded_current_chart_context():
     assert '"type":"TEXT_MESSAGE_CONTENT"' in content
     assert '"type":"TOOL_CALL_START"' in content
     assert '"toolCallName":"chartAgentProgress"' in content
+    assert '"id":"parse_style_request"' in content
+    assert '"id":"read_current_chart"' in content
+    assert '"id":"generate_style_patch"' in content
+    assert '"id":"query_data"' not in content
     assert "chart-agent-action" in content
 
 
