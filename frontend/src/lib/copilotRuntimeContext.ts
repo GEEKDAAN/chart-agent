@@ -39,7 +39,7 @@ export function installCopilotRuntimeContextPatch(runtimeUrl: string) {
 function isCopilotRuntimeRequest(input: RequestInfo | URL, runtimeUrl: string): boolean {
   const targetUrl = normalizeUrl(runtimeUrl);
   const requestUrl = normalizeUrl(input instanceof Request ? input.url : String(input));
-  return Boolean(targetUrl && requestUrl === targetUrl);
+  return Boolean(targetUrl && (requestUrl === targetUrl || requestUrl.startsWith(`${targetUrl}/`)));
 }
 
 function normalizeUrl(value: string): string {
@@ -80,6 +80,13 @@ function patchRequestInit(
       };
     }
 
+    if (isAgentRunBody(payload)) {
+      return {
+        ...init,
+        body: JSON.stringify(withRuntimeContext(payload, context)),
+      };
+    }
+
     const variables = payload.variables ?? {};
     const data = variables.data ?? {};
     const metadata = data.metadata ?? {};
@@ -110,4 +117,37 @@ function patchRequestInit(
   } catch {
     return init;
   }
+}
+
+function isAgentRunBody(payload: unknown): payload is Record<string, unknown> {
+  if (!payload || typeof payload !== "object") return false;
+  const value = payload as Record<string, unknown>;
+  return Array.isArray(value.messages) && typeof value.threadId === "string";
+}
+
+function withRuntimeContext(
+  payload: Record<string, unknown>,
+  context: ChartAgentRuntimeContext,
+): Record<string, unknown> {
+  const forwardedProps =
+    payload.forwardedProps && typeof payload.forwardedProps === "object" && !Array.isArray(payload.forwardedProps)
+      ? payload.forwardedProps
+      : {};
+  const properties =
+    payload.properties && typeof payload.properties === "object" && !Array.isArray(payload.properties)
+      ? payload.properties
+      : {};
+
+  return {
+    ...payload,
+    forwardedProps: {
+      ...forwardedProps,
+      ...context,
+    },
+    properties: {
+      ...properties,
+      ...context,
+    },
+    chartAgentContext: context,
+  };
 }

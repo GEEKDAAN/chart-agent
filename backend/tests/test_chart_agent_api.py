@@ -67,6 +67,99 @@ def test_update_without_current_chart_returns_error():
     assert body["action"]["code"] == "validation_error"
 
 
+def test_smalltalk_returns_conversational_response_without_chart_action():
+    response = client.post("/chart-agent/chat", json=_payload("你好"))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "smalltalk"
+    assert body["action"]["type"] == "error"
+    assert body["action"]["code"] == "smalltalk"
+    assert "chart-agent" in body["action"]["message"]
+
+
+def test_help_returns_capability_guidance():
+    response = client.post("/chart-agent/chat", json=_payload("你能做什么"))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "help"
+    assert body["action"]["type"] == "error"
+    assert body["action"]["code"] == "help"
+    assert "生成图表" in body["action"]["message"]
+
+
+def test_out_of_scope_returns_boundary_message():
+    response = client.post("/chart-agent/chat", json=_payload("今天天气怎么样"))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "out_of_scope"
+    assert body["action"]["type"] == "error"
+    assert body["action"]["code"] == "out_of_scope"
+
+
+def test_unclear_request_asks_for_chart_details():
+    response = client.post("/chart-agent/chat", json=_payload("帮我看看"))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "unclear_chart_request"
+    assert body["action"]["type"] == "error"
+    assert body["action"]["code"] == "clarification_required"
+
+
+def test_current_chart_question_returns_explanation():
+    chart = _create_chart()
+
+    response = client.post("/chart-agent/chat", json=_payload("这个图表相关信息是什么？", chart))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "explain_chart"
+    assert body["action"]["type"] == "error"
+    assert body["action"]["code"] == "explanation"
+    assert "当前图表" in body["action"]["message"]
+
+
+def test_ambiguous_review_with_current_chart_returns_explanation():
+    chart = _create_chart()
+
+    response = client.post("/chart-agent/chat", json=_payload("帮我看看", chart))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "explain_chart"
+    assert body["action"]["code"] == "explanation"
+
+
+def test_current_chart_dimension_question_lists_values():
+    chart = _create_chart()
+
+    response = client.post("/chart-agent/chat", json=_payload("有哪些渠道？", chart))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "explain_chart"
+    assert body["action"]["type"] == "error"
+    assert body["action"]["code"] == "explanation"
+    assert "抖音、小红书、微信、天猫" in body["action"]["message"]
+
+
+def test_current_chart_metric_lookup_uses_existing_chart_data():
+    chart = _create_chart()
+
+    response = client.post("/chart-agent/chat", json=_payload("抖音的销售额有多少？", chart))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "explain_chart"
+    assert body["action"]["type"] == "error"
+    assert body["action"]["code"] == "explanation"
+    assert "抖音" in body["action"]["message"]
+    assert "168,000" in body["action"]["message"]
+
+
 def _create_chart() -> dict:
     response = client.post("/chart-agent/chat", json=_payload("看最近30天各渠道销售额"))
     return response.json()["action"]["chart"]

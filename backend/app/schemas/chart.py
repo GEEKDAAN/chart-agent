@@ -10,8 +10,24 @@ Intent = Literal[
     "update_data",
     "change_chart_type",
     "explain_chart",
+    "smalltalk",
+    "help",
+    "out_of_scope",
+    "unclear_chart_request",
     "unknown",
 ]
+ChartAgentToolName = Literal[
+    "create_chart",
+    "update_style",
+    "update_data",
+    "change_chart_type",
+    "answer_current_chart_question",
+    "clarify_chart_request",
+    "smalltalk",
+    "help",
+    "out_of_scope",
+]
+DecisionSource = Literal["llm", "fallback"]
 
 
 class UserContext(BaseModel):
@@ -130,6 +146,15 @@ class ChartAgentAction(BaseModel):
         if self.type == "error" and not self.code:
             raise ValueError("error requires code")
         return self
+
+
+class ChartAgentDecision(BaseModel):
+    intent: Intent
+    toolName: ChartAgentToolName
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    confidence: float = Field(ge=0, le=1)
+    reason: str = ""
+    source: DecisionSource
 
 
 class ChartAgentResponse(BaseModel):

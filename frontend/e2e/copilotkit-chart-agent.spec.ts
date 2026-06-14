@@ -45,7 +45,13 @@ test("CopilotKit sidebar can generate and update a chart with structured steps",
 
   await sendPrompt(page, "把抖音改成红色");
   await sendPrompt(page, "加一列利润率");
-  await sendPrompt(page, "解释一下这个图");
+  const progressCountBeforeQuestion = await page.locator(".chat-progress").count();
+  await sendPrompt(page, "解释一下这个图", { expectProgress: false });
+  await expect(page.locator(".chat-progress")).toHaveCount(progressCountBeforeQuestion);
+  await sendPrompt(page, "有哪些渠道？", { expectProgress: false });
+  await expect(page.getByText(/抖音.*小红书.*微信.*天猫/)).toBeVisible();
+  await sendPrompt(page, "抖音的销售额有多少？", { expectProgress: false });
+  await expect(page.getByText(/168,000/)).toBeVisible();
 
   const pageText = await page.locator("body").innerText();
   expect(pageText).toContain("执行步骤");
@@ -53,7 +59,7 @@ test("CopilotKit sidebar can generate and update a chart with structured steps",
   expect(pageText).not.toContain("chart-agent-action");
   expect(pageText).not.toContain("chart-agent-step");
 
-  expect(agentRuns).toHaveLength(5);
+  expect(agentRuns).toHaveLength(7);
   expect(agentRuns[0]).toMatchObject({
     prompt: "看最近30天各渠道销售额",
     hasCurrentChart: false,
@@ -69,13 +75,58 @@ test("CopilotKit sidebar can generate and update a chart with structured steps",
     hasCurrentChart: true,
     chartType: "line"
   });
+  expect(agentRuns[4]).toMatchObject({
+    prompt: "解释一下这个图",
+    hasCurrentChart: true
+  });
+  expect(agentRuns[5]).toMatchObject({
+    prompt: "有哪些渠道？",
+    hasCurrentChart: true
+  });
+  expect(agentRuns[6]).toMatchObject({
+    prompt: "抖音的销售额有多少？",
+    hasCurrentChart: true
+  });
 
   expect(badResponses).toEqual([]);
 });
 
-async function sendPrompt(page: import("@playwright/test").Page, prompt: string) {
+async function sendPrompt(
+  page: import("@playwright/test").Page,
+  prompt: string,
+  options: { expectProgress?: boolean } = {},
+) {
+  const expectProgress = options.expectProgress ?? true;
+  const progressCount = await page.locator(".chat-progress").count();
+  const responsePromise = page.waitForResponse(
+    (response) => {
+      if (!response.url().includes("/copilotkit") || response.request().method() !== "POST") return false;
+      const postData = response.request().postData();
+      if (!postData) return false;
+
+      try {
+        const payload = JSON.parse(postData);
+        const body = payload.body ?? payload;
+        const lastMessage = body.messages?.at(-1);
+        return lastMessage?.role === "user" && lastMessage.content === prompt;
+      } catch {
+        return false;
+      }
+    }
+  );
+
   await page.locator("textarea").fill(prompt);
   await page.locator("button").last().click();
   await expect(page.getByText(prompt)).toBeVisible();
-  await expect(page.locator(".chat-progress").last()).toContainText("解析用户需求");
+  const response = await responsePromise;
+  const content = await response.text();
+
+  if (expectProgress) {
+    expect(content).toContain('"type":"TOOL_CALL_START"');
+    expect(content).toContain("chartAgentProgress");
+    await expect(page.locator(".chat-progress").last()).toContainText("解析用户需求");
+  } else {
+    expect(content).not.toContain('"type":"TOOL_CALL_START"');
+    await expect(page.locator(".chat-progress")).toHaveCount(progressCount);
+  }
 }

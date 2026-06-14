@@ -10,6 +10,7 @@ LLMMode = Literal["off", "openai"]
 
 
 class Settings(BaseModel):
+    app_env: str = "development"
     llm_mode: LLMMode = "off"
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
@@ -20,6 +21,7 @@ class Settings(BaseModel):
 def get_settings() -> Settings:
     load_dotenv(Path(__file__).resolve().parents[2] / ".env", encoding="utf-8-sig")
     return Settings(
+        app_env=os.getenv("CHART_AGENT_ENV", "development").strip().lower(),
         llm_mode=_read_llm_mode(),
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),

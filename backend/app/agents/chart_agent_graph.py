@@ -6,6 +6,7 @@ from langgraph.graph import END, StateGraph
 from app.agents.chart_agent_state import ChartAgentState, DataRequirements
 from app.schemas.chart import (
     ChartAgentAction,
+    ChartAgentDecision,
     ChartAgentRequest,
     ChartAgentResponse,
     ChartData,
@@ -14,16 +15,23 @@ from app.schemas.chart import (
     ChartSpec,
     ChartStyle,
     Intent,
+    UserContext,
 )
 from app.services.llm_actions import generate_llm_action
+from app.services.llm_decisions import (
+    answer_current_chart_question,
+    decide_chart_agent_tool,
+    fallback_chart_agent_decision,
+)
 from app.services.data_requirements import parse_data_requirements
 from app.services.metrics import get_metric_catalog, query_metrics, validate_data_access
 
 QueryMetrics = Callable[[list[str], list[str], dict[str, Any] | None, dict[str, str] | None, int], ChartData]
 LLMAction = Callable[[ChartAgentState], ChartAgentAction | None]
+DecisionFn = Callable[[ChartAgentState], ChartAgentDecision]
 
 
-def run_chart_agent(request: ChartAgentRequest) -> ChartAgentResponse:
+def run_chart_agent(request: ChartAgentRequest, initial_decision: ChartAgentDecision | None = None) -> ChartAgentResponse:
     graph = build_chart_agent_graph()
     initial_state: ChartAgentState = {
         "conversation_id": request.conversation_id,
@@ -37,6 +45,8 @@ def run_chart_agent(request: ChartAgentRequest) -> ChartAgentResponse:
         "assistant_message": "",
         "errors": [],
     }
+    if initial_decision:
+        initial_state["decision"] = initial_decision
     final_state = graph.invoke(initial_state)
     action = final_state.get("chart_action") or ChartAgentAction(
         type="error",
@@ -53,18 +63,19 @@ def run_chart_agent(request: ChartAgentRequest) -> ChartAgentResponse:
 def build_chart_agent_graph(
     query_metrics_fn: QueryMetrics = query_metrics,
     llm_action_fn: LLMAction = generate_llm_action,
+    decision_fn: DecisionFn = decide_chart_agent_tool,
 ):
     workflow = StateGraph(ChartAgentState)
-    workflow.add_node("classify_intent", classify_intent_node)
+    workflow.add_node("decide_tool", _make_decide_tool_node(decision_fn))
     workflow.add_node("plan_data", plan_data_node)
     workflow.add_node("query_data", _make_query_data_node(query_metrics_fn))
     workflow.add_node("generate_action", _make_generate_action_node(llm_action_fn))
     workflow.add_node("validate_action", validate_action_node)
     workflow.add_node("respond", respond_node)
 
-    workflow.set_entry_point("classify_intent")
+    workflow.set_entry_point("decide_tool")
     workflow.add_conditional_edges(
-        "classify_intent",
+        "decide_tool",
         route_after_classification,
         {
             "plan_data": "plan_data",
@@ -86,23 +97,34 @@ def build_chart_agent_graph(
     return workflow.compile()
 
 
-def classify_intent_node(state: ChartAgentState) -> ChartAgentState:
-    return {**state, "intent": classify_intent(state["user_message"])}
+def _make_decide_tool_node(decision_fn: DecisionFn):
+    def decide_tool_node(state: ChartAgentState) -> ChartAgentState:
+        if state.get("decision"):
+            decision = state["decision"]
+            return {**state, "intent": decision.intent}
+        try:
+            decision = decision_fn(state)
+        except Exception:
+            decision = fallback_chart_agent_decision(state)
+        return {**state, "decision": decision, "intent": decision.intent}
+
+    return decide_tool_node
 
 
-def classify_intent(message: str) -> Intent:
-    normalized = message.strip().lower()
-    if any(keyword in normalized for keyword in ["解释", "说明", "分析一下"]):
-        return "explain_chart"
-    if any(keyword in normalized for keyword in ["红色", "颜色", "蓝色", "绿色"]):
-        return "update_style"
-    if any(keyword in normalized for keyword in ["加一列", "新增指标", "加上", "增加指标"]):
-        return "update_data"
-    if any(keyword in normalized for keyword in ["折线", "柱状", "饼图", "表格", "换成"]):
-        return "change_chart_type"
-    if any(keyword in normalized for keyword in ["看", "生成", "统计", "销售额", "订单数", "利润率", "趋势"]):
-        return "create_chart"
-    return "unknown"
+def classify_intent(message: str, current_chart: ChartSpec | None = None) -> Intent:
+    state: ChartAgentState = {
+        "conversation_id": "compat",
+        "user_message": message,
+        "current_chart": current_chart,
+        "page_context": {},
+        "user_context": UserContext(userId="compat", tenantId="demo"),
+        "data_requirements": None,
+        "queried_data": None,
+        "chart_action": None,
+        "assistant_message": "",
+        "errors": [],
+    }
+    return fallback_chart_agent_decision(state).intent
 
 
 def route_after_classification(state: ChartAgentState) -> Literal["plan_data", "generate_action"]:
@@ -145,6 +167,13 @@ def _make_generate_action_node(llm_action_fn: LLMAction):
         if state.get("errors"):
             return {**state, "chart_action": _error_action("validation_error", state["errors"][0])}
 
+        conversational_action = _conversational_action(state.get("intent", "unknown"))
+        if conversational_action:
+            return {**state, "chart_action": conversational_action}
+
+        if state.get("intent") == "explain_chart" and state.get("current_chart"):
+            return {**state, "chart_action": _explain_chart_action(state)}
+
         try:
             llm_action = llm_action_fn(state)
         except Exception:
@@ -174,6 +203,30 @@ def _make_generate_action_node(llm_action_fn: LLMAction):
         return {**state, "chart_action": action}
 
     return generate_action_node
+
+
+def _conversational_action(intent: Intent) -> ChartAgentAction | None:
+    if intent == "smalltalk":
+        return _error_action(
+            "smalltalk",
+            "你好，我是 chart-agent。你可以告诉我想看什么指标、按什么维度分析，或者让我修改当前图表。",
+        )
+    if intent == "help":
+        return _error_action(
+            "help",
+            "我可以生成图表、修改图表颜色、切换图表类型、增加指标列，并解释当前图表。比如：看最近30天各渠道销售额、把抖音改成红色、换成折线图。",
+        )
+    if intent == "out_of_scope":
+        return _error_action(
+            "out_of_scope",
+            "我目前只处理图表生成、图表编辑和图表解释相关需求。请告诉我你想分析的指标、维度或要修改的图表内容。",
+        )
+    if intent == "unclear_chart_request":
+        return _error_action(
+            "clarification_required",
+            "我还不能确定你的图表需求。请明确指标、维度或修改目标，例如“看最近30天各渠道销售额”或“把抖音改成红色”。",
+        )
+    return None
 
 
 def validate_action_node(state: ChartAgentState) -> ChartAgentState:
@@ -283,9 +336,7 @@ def _change_chart_type_action(state: ChartAgentState) -> ChartAgentAction:
 
 def _explain_chart_action(state: ChartAgentState) -> ChartAgentAction:
     current = _require_current_chart(state)
-    rows_count = len(current.data.rows)
-    columns = "、".join(column.label for column in current.data.columns)
-    return _error_action("explanation", f"当前图表「{current.title}」包含 {rows_count} 行数据，字段包括：{columns}。")
+    return _error_action("explanation", answer_current_chart_question(state["user_message"], current))
 
 
 def _require_current_chart(state: ChartAgentState) -> ChartSpec:

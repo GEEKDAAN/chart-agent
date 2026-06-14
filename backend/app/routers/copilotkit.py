@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 from collections.abc import Iterable
 from typing import Any
 from uuid import uuid4
@@ -8,12 +9,16 @@ from fastapi import APIRouter, Query, Response
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 
+from app.schemas.chart import Intent
 from app.schemas.chart import ChartAgentRequest
+from app.core.config import get_settings
 from app.services.chart_agent import run_chart_agent
+from app.services.llm_decisions import decide_chart_agent_tool
 
 router = APIRouter(prefix="/copilotkit", tags=["copilotkit"])
 
 RUNTIME_VERSION = "1.59.5"
+logger = logging.getLogger("uvicorn.error")
 
 
 @router.get("/threads")
@@ -129,6 +134,7 @@ def _to_chart_agent_request_from_agui(body: dict[str, Any], thread_id: str) -> C
         raise ValueError("CopilotKit agent/run request does not contain a user text message")
 
     properties = _resolve_agui_runtime_properties(body)
+    _log_runtime_context_debug(thread_id, message, properties)
     return ChartAgentRequest.model_validate(
         {
             "conversationId": thread_id,
@@ -138,6 +144,17 @@ def _to_chart_agent_request_from_agui(body: dict[str, Any], thread_id: str) -> C
             "userContext": properties.get("userContext")
             or {"userId": "copilotkit_user", "tenantId": "demo"},
         }
+    )
+
+
+def _log_runtime_context_debug(thread_id: str, message: str, properties: dict[str, Any]) -> None:
+    if get_settings().app_env == "production":
+        return
+    logger.info(
+        "chart-agent runtime context: threadId=%s messageLength=%s hasCurrentChart=%s",
+        thread_id,
+        len(message),
+        bool(properties.get("currentChart")),
     )
 
 
@@ -215,13 +232,20 @@ def _structured_agui_agent_run_events(
     }
 
     try:
-        yield _tool_call_start(message_id, tool_call_id, _progress_steps("running"))
-        yield _tool_call_args(tool_call_id, _progress_steps("running"))
         chart_request = _to_chart_agent_request_from_agui(body, thread_id)
-        chart_response = run_chart_agent(chart_request)
+        decision = _decide_runtime_tool(chart_request)
+        intent = decision.intent
 
-        yield _tool_call_end(tool_call_id)
-        yield _tool_call_result(tool_call_id, _progress_steps("completed"))
+        if _should_render_progress(intent):
+            yield _tool_call_start(message_id, tool_call_id, _progress_steps("running"))
+            yield _tool_call_args(tool_call_id, _progress_steps("running"))
+
+        chart_response = run_chart_agent(chart_request, initial_decision=decision)
+
+        if _should_render_progress(intent):
+            yield _tool_call_end(tool_call_id)
+            yield _tool_call_result(tool_call_id, _progress_steps("completed"))
+
         content = _format_chart_agent_response(chart_response.model_dump(by_alias=True))
         yield _text_delta(message_id, content)
         yield {
@@ -235,8 +259,6 @@ def _structured_agui_agent_run_events(
         }
     except (ValueError, ValidationError) as error:
         message = str(error)
-        yield _tool_call_end(tool_call_id)
-        yield _tool_call_result(tool_call_id, _progress_steps("failed", message))
         yield _text_delta(message_id, f"处理失败：{message}")
         yield {
             "type": "TEXT_MESSAGE_END",
@@ -247,6 +269,27 @@ def _structured_agui_agent_run_events(
             "message": message,
             "code": "chart_agent_error",
         }
+
+
+def _should_render_progress(intent: Intent) -> bool:
+    return intent in {"create_chart", "update_style", "update_data", "change_chart_type"}
+
+
+def _decide_runtime_tool(chart_request: ChartAgentRequest):
+    return decide_chart_agent_tool(
+        {
+            "conversation_id": chart_request.conversation_id,
+            "user_message": chart_request.message,
+            "current_chart": chart_request.current_chart,
+            "page_context": chart_request.page_context,
+            "user_context": chart_request.user_context,
+            "data_requirements": None,
+            "queried_data": None,
+            "chart_action": None,
+            "assistant_message": "",
+            "errors": [],
+        }
+    )
 
 
 def _text_delta(message_id: str, delta: str) -> dict[str, Any]:

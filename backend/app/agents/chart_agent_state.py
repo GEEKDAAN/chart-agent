@@ -1,6 +1,6 @@
 from typing import Any, NotRequired, TypedDict
 
-from app.schemas.chart import ChartAgentAction, ChartData, ChartSpec, Intent, UserContext
+from app.schemas.chart import ChartAgentAction, ChartAgentDecision, ChartData, ChartSpec, Intent, UserContext
 
 
 class DataRequirements(TypedDict):
@@ -17,6 +17,7 @@ class ChartAgentState(TypedDict):
     page_context: dict[str, Any]
     user_context: UserContext
     intent: NotRequired[Intent]
+    decision: NotRequired[ChartAgentDecision]
     data_requirements: NotRequired[DataRequirements | None]
     queried_data: NotRequired[ChartData | None]
     chart_action: NotRequired[ChartAgentAction | None]

@@ -33,6 +33,56 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.10.1] - 2026-06-12
+
+- 【前端】：
+  1. 修复 CopilotKit Runtime 上下文补丁只匹配 `/copilotkit` 单端点的问题，现在 `/copilotkit/agent/{agentId}/run` 等子路径请求也会注入 `currentChart`。
+  2. 修复 REST Agent run 请求体没有 `method=agent/run` 时上下文被写入错误结构的问题，确保连续追问能携带当前图表。
+  3. 更新前端版本号和界面版本标识为 `0.10.1`。
+
+- 【后端】：
+  1. 开发模式下新增 CopilotKit Runtime 上下文诊断日志，输出 `hasCurrentChart`，便于确认真实请求是否携带当前图表上下文。
+  2. 新增 `CHART_AGENT_ENV` 配置，生产环境为 `production` 时不输出该诊断日志。
+  3. 修复 LLM-first 决策在已存在 `currentChart` 时误将“有哪些渠道？”等当前图表追问判断为澄清请求的问题；当确定性 fallback 明确识别为当前图表问答时，后端会拒绝冲突的 LLM 决策并回退到 `answer_current_chart_question`。
+  4. 更新 FastAPI 应用版本为 `0.10.1`。
+
+- 【测试】：
+  1. 新增 CopilotKit REST Agent run 当前图表追问测试，覆盖“渠道有哪些？”这类连续问答不会触发进度卡或新图表 action。
+  2. 新增 LLM 误判澄清请求时的回退测试，覆盖当前图表追问不会被错误澄清。
+
+## [0.10.0] - 2026-06-12
+
+- 【后端】：
+  1. 新增 `ChartAgentDecision` 内部决策协议，包含 `intent`、`toolName`、`arguments`、`confidence`、`reason` 和 `source`。
+  2. 新增 LLM-first 工具决策层：优先由大模型输出结构化工具决策，非法、低置信度或不可用时回退到确定性 fallback。
+  3. LangGraph 入口从规则式 `classify_intent` 收敛为 `decide_tool`，`classify_intent` 仅保留为兼容入口。
+  4. 当前图表追问改为读取 `currentChart` 回答，例如“有哪些渠道？”和“抖音的销售额有多少？”，不再误触发新图表生成。
+  5. CopilotKit Runtime 的进度卡预判复用同一决策层，当前图表问答不输出 `chartAgentProgress` 或 action marker。
+  6. 更新 FastAPI 应用版本为 `0.10.0`。
+- 【前端】：
+  1. 更新前端版本号和界面版本标识为 `0.10.0`。
+  2. 保持 CopilotKit 定位为聊天 UI、上下文传递和工具渲染入口，暂不注册业务型 `useFrontendTool`。
+- 【测试】：
+  1. 新增 LLM 决策接管、非法决策回退、低置信度回退相关 workflow 测试。
+  2. 新增图表 API 和 CopilotKit Runtime 测试，覆盖当前图表维度枚举和单项指标查询。
+  3. 更新 Playwright E2E 测试，覆盖生成图表后的连续追问和问答不展示步骤卡。
+
+## [0.9.9] - 2026-06-11
+
+- 【后端】：
+  1. 新增 `smalltalk`、`help`、`out_of_scope` 和 `unclear_chart_request` 意图分流，避免所有输入都强行进入图表 workflow。
+  2. “你好”“你能做什么”等输入会返回普通文本回复，不触发图表 action，也不调用 LLM action 生成。
+  3. 意图分类开始使用当前 `ChartSpec` 上下文，有图表时“这个图怎么样”“图表相关信息”“帮我看看”等请求会进入当前图表解释。
+  4. CopilotKit Runtime 仅在生成或修改图表时输出 `chartAgentProgress` 工具调用，当前图表问答、闲聊、帮助和边界提示不再展示执行步骤卡。
+  5. 更新 FastAPI 应用版本为 `0.9.9`。
+- 【前端】：
+  1. 更新前端版本号和界面版本标识为 `0.9.9`。
+- 【测试】：
+  1. 新增图表 API 测试，覆盖闲聊、帮助、非图表问题和模糊需求。
+  2. 新增 workflow 测试，确认闲聊不会查询指标，也不会调用 LLM action 生成。
+  3. 新增当前图表问答测试，确认 CopilotKit 传入 `currentChart` 后会解释当前图表而不是追问指标维度。
+  4. 新增 CopilotKit Runtime 测试，确认闲聊只返回普通文本，不输出进度工具调用和 action marker。
+
 ## [0.9.8] - 2026-06-11
 
 - 【前端】：

@@ -155,6 +155,184 @@ def test_agent_run_uses_forwarded_current_chart_context():
     assert "chart-agent-action" in content
 
 
+def test_agent_run_uses_current_chart_context_for_chart_questions():
+    chart = _create_chart()
+
+    response = client.post(
+        "/copilotkit",
+        json={
+            "method": "agent/run",
+            "params": {"agentId": "chart-agent"},
+            "body": {
+                "threadId": "thread-chart-question",
+                "runId": "run-chart-question",
+                "messages": [
+                    {
+                        "id": "user-message-chart-question",
+                        "role": "user",
+                        "content": "这个图表相关信息是什么？",
+                    }
+                ],
+                "forwardedProps": {
+                    "currentChart": chart,
+                    "pageContext": {"source": "test-chart-question"},
+                    "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    content = response.text
+    assert '"type":"TOOL_CALL_START"' not in content
+    assert "chartAgentProgress" not in content
+    assert "当前图表" in content
+    assert "我还不能确定你的图表需求" not in content
+    assert "chart-agent-action" not in content
+    assert '"type":"RUN_FINISHED"' in content
+
+
+def test_agent_run_answers_current_chart_dimension_question_without_progress():
+    chart = _create_chart()
+
+    response = client.post(
+        "/copilotkit",
+        json={
+            "method": "agent/run",
+            "params": {"agentId": "chart-agent"},
+            "body": {
+                "threadId": "thread-chart-dimension-question",
+                "runId": "run-chart-dimension-question",
+                "messages": [
+                    {
+                        "id": "user-message-chart-dimension-question",
+                        "role": "user",
+                        "content": "有哪些渠道？",
+                    }
+                ],
+                "forwardedProps": {
+                    "currentChart": chart,
+                    "pageContext": {"source": "test-chart-dimension-question"},
+                    "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    content = response.text
+    assert '"type":"TOOL_CALL_START"' not in content
+    assert "chartAgentProgress" not in content
+    assert "抖音、小红书、微信、天猫" in content
+    assert "chart-agent-action" not in content
+    assert '"type":"RUN_FINISHED"' in content
+
+
+def test_agent_run_rest_endpoint_answers_current_chart_dimension_question_without_progress():
+    chart = _create_chart()
+
+    response = client.post(
+        "/copilotkit/agent/chart-agent/run",
+        json={
+            "threadId": "thread-rest-chart-dimension-question",
+            "runId": "run-rest-chart-dimension-question",
+            "messages": [
+                {
+                    "id": "user-message-rest-chart-dimension-question",
+                    "role": "user",
+                    "content": "渠道有哪些？",
+                }
+            ],
+            "forwardedProps": {
+                "currentChart": chart,
+                "pageContext": {"source": "test-rest-chart-dimension-question"},
+                "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    content = response.text
+    assert '"type":"TOOL_CALL_START"' not in content
+    assert "chartAgentProgress" not in content
+    assert "抖音" in content
+    assert "小红书" in content
+    assert "微信" in content
+    assert "天猫" in content
+    assert "chart-agent-action" not in content
+    assert '"type":"RUN_FINISHED"' in content
+
+
+def test_agent_run_answers_current_chart_metric_lookup_without_progress():
+    chart = _create_chart()
+
+    response = client.post(
+        "/copilotkit",
+        json={
+            "method": "agent/run",
+            "params": {"agentId": "chart-agent"},
+            "body": {
+                "threadId": "thread-chart-metric-question",
+                "runId": "run-chart-metric-question",
+                "messages": [
+                    {
+                        "id": "user-message-chart-metric-question",
+                        "role": "user",
+                        "content": "抖音的销售额有多少？",
+                    }
+                ],
+                "forwardedProps": {
+                    "currentChart": chart,
+                    "pageContext": {"source": "test-chart-metric-question"},
+                    "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    content = response.text
+    assert '"type":"TOOL_CALL_START"' not in content
+    assert "chartAgentProgress" not in content
+    assert "168,000" in content
+    assert "chart-agent-action" not in content
+    assert '"type":"RUN_FINISHED"' in content
+
+
+def test_agent_run_smalltalk_returns_text_without_progress_tool_or_action_marker():
+    response = client.post(
+        "/copilotkit",
+        json={
+            "method": "agent/run",
+            "params": {"agentId": "chart-agent"},
+            "body": {
+                "threadId": "thread-smalltalk",
+                "runId": "run-smalltalk",
+                "messages": [
+                    {
+                        "id": "user-message-smalltalk",
+                        "role": "user",
+                        "content": "你好",
+                    }
+                ],
+                "forwardedProps": {
+                    "pageContext": {"source": "test-smalltalk"},
+                    "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    content = response.text
+    assert '"type":"RUN_STARTED"' in content
+    assert '"type":"TEXT_MESSAGE_CONTENT"' in content
+    assert "你好，我是 chart-agent" in content
+    assert "chartAgentProgress" not in content
+    assert "chart-agent-action" not in content
+    assert '"type":"RUN_FINISHED"' in content
+
+
 def test_agent_connect_rest_endpoint_returns_agui_sse_events():
     response = client.post(
         "/copilotkit/agent/chart-agent/connect",
@@ -203,9 +381,8 @@ def test_agent_run_streams_failure_status_when_user_message_is_missing():
     assert response.headers["content-type"].startswith("text/event-stream")
     content = response.text
     assert '"type":"RUN_STARTED"' in content
-    assert '"type":"TOOL_CALL_START"' in content
-    assert '"toolCallName":"chartAgentProgress"' in content
-    assert "failed" in content
+    assert '"type":"TOOL_CALL_START"' not in content
+    assert "chartAgentProgress" not in content
     assert "CopilotKit agent/run request does not contain a user text message" in content
     assert '"type":"RUN_ERROR"' in content
 
