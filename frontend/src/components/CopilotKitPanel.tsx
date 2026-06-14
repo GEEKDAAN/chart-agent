@@ -11,12 +11,14 @@ import { z } from "zod";
 import "@copilotkit/react-core/v2/styles.css";
 
 import { copilotRuntimeUrl, isCopilotEnabled } from "../lib/config";
+import { useChartAgentProgress } from "../lib/chartAgentProgressStore";
 import {
   installCopilotRuntimeContextPatch,
   syncChartAgentRuntimeContext,
   type ChartAgentRuntimeContext
 } from "../lib/copilotRuntimeContext";
 import type { ChartAgentAction, ChartSpec } from "../types/chart";
+import type { ProgressStep } from "../types/progress";
 
 type JsonSerializable =
   | string
@@ -40,10 +42,9 @@ const progressStepSchema = z.object({
 });
 
 const progressParametersSchema = z.object({
+  progressId: z.string().optional(),
   steps: z.array(progressStepSchema)
 });
-
-type ProgressStep = z.infer<typeof progressStepSchema>;
 
 const suggestions = [
   { title: "生成图表", message: "看最近30天各渠道销售额" },
@@ -154,15 +155,27 @@ function ChartAgentProgressRenderer() {
     parameters: progressParametersSchema,
     render: ({ status, parameters, result }) => {
       const resultSteps = readProgressSteps(result);
+      const resultProgressId = readProgressId(result);
+      const progressId = resultProgressId ?? parameters.progressId;
       const steps = resultSteps.length > 0 ? resultSteps : parameters.steps ?? [];
-      return <ChatProgressSteps status={status} steps={steps} />;
+      return <ChatProgressSteps progressId={progressId} status={status} steps={steps} />;
     }
   });
 
   return null;
 }
 
-function ChatProgressSteps({ status, steps }: { status: string; steps: ProgressStep[] }) {
+function ChatProgressSteps({
+  progressId,
+  status,
+  steps
+}: {
+  progressId: string | undefined;
+  status: string;
+  steps: ProgressStep[];
+}) {
+  const streamedSnapshot = useChartAgentProgress(progressId);
+  const visibleSteps = streamedSnapshot?.steps ?? steps;
   const label = status === "complete" ? "已完成" : "执行中";
 
   return (
@@ -172,7 +185,7 @@ function ChatProgressSteps({ status, steps }: { status: string; steps: ProgressS
         <span>{label}</span>
       </div>
       <ol className="chat-progress-list">
-        {steps.map((step, index) => (
+        {visibleSteps.map((step, index) => (
           <li className={`chat-progress-step chat-progress-step-${step.status}`} key={step.id}>
             <span className="chat-progress-index">{step.status === "completed" ? "✓" : index + 1}</span>
             <div>
@@ -192,6 +205,14 @@ function readProgressSteps(result: unknown): ProgressStep[] {
   const parsed = typeof result === "string" ? safeJsonParse(result) : result;
   const validation = progressParametersSchema.safeParse(parsed);
   return validation.success ? validation.data.steps : [];
+}
+
+function readProgressId(result: unknown): string | undefined {
+  if (!result) return undefined;
+
+  const parsed = typeof result === "string" ? safeJsonParse(result) : result;
+  const validation = progressParametersSchema.safeParse(parsed);
+  return validation.success ? validation.data.progressId : undefined;
 }
 
 function safeJsonParse(value: string): unknown {

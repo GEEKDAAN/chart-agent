@@ -136,10 +136,13 @@ def test_agent_run_single_endpoint_returns_agui_sse_events_with_tool_render_prog
     assert '"type":"TOOL_CALL_ARGS"' in content
     assert '"type":"TOOL_CALL_END"' in content
     assert '"type":"TOOL_CALL_RESULT"' in content
+    assert content.count('"type":"TOOL_CALL_RESULT"') > 1
     assert '"id":"parse_create_request"' in content
     assert '"id":"query_data"' in content
     assert '"id":"generate_chart"' in content
     assert '"id":"sync_frontend"' in content
+    assert '\\"status\\":\\"running\\"' in content
+    assert '\\"status\\":\\"completed\\"' in content
     assert "执行状态：" not in content
     assert "chart-agent-step" not in content
     assert "chart-agent-action" in content
@@ -201,6 +204,40 @@ def test_agent_run_uses_forwarded_current_chart_context():
     assert '"id":"generate_style_patch"' in content
     assert '"id":"query_data"' not in content
     assert "chart-agent-action" in content
+
+
+def test_agent_run_streams_failed_progress_when_chart_update_has_no_current_chart():
+    response = client.post(
+        "/copilotkit",
+        json={
+            "method": "agent/run",
+            "params": {"agentId": "chart-agent"},
+            "body": {
+                "threadId": "thread-style-no-chart",
+                "runId": "run-style-no-chart",
+                "messages": [
+                    {
+                        "id": "user-message-style-no-chart",
+                        "role": "user",
+                        "content": "把抖音改成红色",
+                    }
+                ],
+                "forwardedProps": {
+                    "pageContext": {"source": "test-style-no-chart"},
+                    "userContext": {"userId": "u_demo", "tenantId": "t_demo"},
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    content = response.text
+    assert '"type":"TOOL_CALL_START"' in content
+    assert '"toolCallName":"chartAgentProgress"' in content
+    assert '"id":"parse_style_request"' in content
+    assert '\\"status\\":\\"failed\\"' in content
+    assert "chart-agent-action" not in content
+    assert '"type":"RUN_FINISHED"' in content
 
 
 def test_agent_run_uses_current_chart_context_for_chart_questions():

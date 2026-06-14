@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("CopilotKit sidebar can generate and update a chart with structured steps", async ({ page }) => {
+test("CopilotKit sidebar can generate and update a chart with streamed structured steps", async ({ page }) => {
   const badResponses: { status: number; url: string }[] = [];
   const agentRuns: { prompt: string; hasCurrentChart: boolean; chartType: string | null }[] = [];
 
@@ -33,18 +33,23 @@ test("CopilotKit sidebar can generate and update a chart with structured steps",
   await expect(page.locator(".workspace").getByText("执行步骤")).toHaveCount(0);
   await expect(page.locator("textarea")).toBeVisible();
 
-  await sendPrompt(page, "看最近30天各渠道销售额");
+  await sendPrompt(page, "近30天各销售渠道的销售额");
   await expect(page.locator("canvas")).toHaveCount(1);
   await expect(page.locator(".chat-progress")).toBeVisible();
   await expect(page.locator(".chat-progress")).toContainText("执行步骤");
+  await expect(page.locator(".chat-progress")).toContainText("识别图表需求");
   await expect(page.locator(".chat-progress")).toContainText("同步到前端");
   await expect(page.locator(".chat-progress")).toContainText("已完成");
 
   await sendPrompt(page, "换成折线图");
-  await expect(page.locator(".chat-progress").last()).toContainText("运行 Agent Workflow");
+  await expect(page.locator(".chat-progress").last()).toContainText("识别图表类型");
 
   await sendPrompt(page, "把抖音改成红色");
+  await expect(page.locator(".chat-progress").last()).toContainText("识别样式修改");
+
   await sendPrompt(page, "加一列利润率");
+  await expect(page.locator(".chat-progress").last()).toContainText("识别数据修改");
+
   const progressCountBeforeQuestion = await page.locator(".chat-progress").count();
   await sendPrompt(page, "解释一下这个图", { expectProgress: false });
   await expect(page.locator(".chat-progress")).toHaveCount(progressCountBeforeQuestion);
@@ -61,7 +66,7 @@ test("CopilotKit sidebar can generate and update a chart with structured steps",
 
   expect(agentRuns).toHaveLength(7);
   expect(agentRuns[0]).toMatchObject({
-    prompt: "看最近30天各渠道销售额",
+    prompt: "近30天各销售渠道的销售额",
     hasCurrentChart: false,
     chartType: null
   });
@@ -98,22 +103,20 @@ async function sendPrompt(
 ) {
   const expectProgress = options.expectProgress ?? true;
   const progressCount = await page.locator(".chat-progress").count();
-  const responsePromise = page.waitForResponse(
-    (response) => {
-      if (!response.url().includes("/copilotkit") || response.request().method() !== "POST") return false;
-      const postData = response.request().postData();
-      if (!postData) return false;
+  const responsePromise = page.waitForResponse((response) => {
+    if (!response.url().includes("/copilotkit") || response.request().method() !== "POST") return false;
+    const postData = response.request().postData();
+    if (!postData) return false;
 
-      try {
-        const payload = JSON.parse(postData);
-        const body = payload.body ?? payload;
-        const lastMessage = body.messages?.at(-1);
-        return lastMessage?.role === "user" && lastMessage.content === prompt;
-      } catch {
-        return false;
-      }
+    try {
+      const payload = JSON.parse(postData);
+      const body = payload.body ?? payload;
+      const lastMessage = body.messages?.at(-1);
+      return lastMessage?.role === "user" && lastMessage.content === prompt;
+    } catch {
+      return false;
     }
-  );
+  });
 
   await page.locator("textarea").fill(prompt);
   await page.locator("button").last().click();
@@ -124,7 +127,9 @@ async function sendPrompt(
   if (expectProgress) {
     expect(content).toContain('"type":"TOOL_CALL_START"');
     expect(content).toContain("chartAgentProgress");
-    await expect(page.locator(".chat-progress").last()).toContainText("解析用户需求");
+    expect(content).toContain('\\"sequence\\":');
+    await expect(page.locator(".chat-progress").last()).toContainText("识别");
+    await expect(page.locator(".chat-progress").last()).toContainText("已完成", { timeout: 12_000 });
   } else {
     expect(content).not.toContain('"type":"TOOL_CALL_START"');
     await expect(page.locator(".chat-progress")).toHaveCount(progressCount);

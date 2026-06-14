@@ -38,7 +38,7 @@ export function App() {
             <p>{status}</p>
           </div>
           <div className="topbar-badges">
-            <span className="status-pill">v0.10.2</span>
+            <span className="status-pill">v0.10.3</span>
             <span className="status-pill">{isCopilotEnabled ? "CopilotKit 已启用" : "CopilotKit 未配置"}</span>
           </div>
         </header>

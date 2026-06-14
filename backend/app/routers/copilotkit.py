@@ -9,16 +9,16 @@ from fastapi import APIRouter, Query, Response
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 
-from app.schemas.chart import Intent
-from app.schemas.chart import ChartAgentRequest
+from app.agents.chart_agent_graph import build_chart_agent_graph
+from app.schemas.chart import ChartAgentAction, ChartAgentRequest, ChartAgentResponse
 from app.core.config import get_settings
-from app.services.chart_agent import run_chart_agent
 from app.services.llm_decisions import decide_chart_agent_tool
 
 router = APIRouter(prefix="/copilotkit", tags=["copilotkit"])
 
 RUNTIME_VERSION = "1.59.5"
 logger = logging.getLogger("uvicorn.error")
+_NON_FAILURE_ACTION_CODES = {"explanation", "smalltalk", "help", "out_of_scope", "clarification_required"}
 
 
 @router.get("/threads")
@@ -237,15 +237,53 @@ def _structured_agui_agent_run_events(
         intent = decision.intent
         tool_name = decision.toolName
 
-        if _should_render_progress(tool_name):
-            yield _tool_call_start(message_id, tool_call_id, _progress_steps(tool_name, "running"))
-            yield _tool_call_args(tool_call_id, _progress_steps(tool_name, "running"))
+        should_render_progress = _should_render_progress(tool_name)
+        progress_sequence = 0
+        if should_render_progress:
+            progress = _with_progress_metadata(_progress_steps(tool_name, "running"), tool_call_id, progress_sequence)
+            yield _tool_call_start(message_id, tool_call_id, progress)
+            yield _tool_call_args(tool_call_id, progress)
 
-        chart_response = run_chart_agent(chart_request, initial_decision=decision)
+        chart_response = None
+        last_node_name = ""
+        last_workflow_state: dict[str, Any] = {}
+        for workflow_event in _stream_chart_agent(chart_request, decision):
+            if workflow_event["type"] == "progress" and should_render_progress:
+                last_node_name = workflow_event["nodeName"]
+                last_workflow_state = workflow_event["state"]
+                progress = _progress_steps_for_node(
+                    tool_name,
+                    last_node_name,
+                    last_workflow_state,
+                )
+                progress_sequence += 1
+                yield _tool_call_result(
+                    tool_call_id,
+                    _with_progress_metadata(progress, tool_call_id, progress_sequence),
+                )
+            if workflow_event["type"] == "final":
+                chart_response = workflow_event["response"]
 
-        if _should_render_progress(tool_name):
+        if chart_response is None:
+            raise ValueError("Chart agent stream did not produce a final response")
+
+        if should_render_progress:
+            final_progress = (
+                _failed_progress_for_final_action(
+                    tool_name,
+                    last_node_name,
+                    last_workflow_state,
+                    chart_response.action.message,
+                )
+                if chart_response.action.type == "error" and chart_response.action.code not in _NON_FAILURE_ACTION_CODES
+                else _progress_steps(tool_name, "completed")
+            )
+            progress_sequence += 1
+            yield _tool_call_result(
+                tool_call_id,
+                _with_progress_metadata(final_progress, tool_call_id, progress_sequence, is_final=True),
+            )
             yield _tool_call_end(tool_call_id)
-            yield _tool_call_result(tool_call_id, _progress_steps(tool_name, "completed"))
 
         content = _format_chart_agent_response(chart_response.model_dump(by_alias=True))
         yield _text_delta(message_id, content)
@@ -291,6 +329,41 @@ def _decide_runtime_tool(chart_request: ChartAgentRequest):
             "errors": [],
         }
     )
+
+
+def _stream_chart_agent(chart_request: ChartAgentRequest, decision) -> Iterable[dict[str, Any]]:
+    initial_state = {
+        "conversation_id": chart_request.conversation_id,
+        "user_message": chart_request.message,
+        "current_chart": chart_request.current_chart,
+        "page_context": chart_request.page_context,
+        "user_context": chart_request.user_context,
+        "decision": decision,
+        "data_requirements": None,
+        "queried_data": None,
+        "chart_action": None,
+        "assistant_message": "",
+        "errors": [],
+    }
+    final_state = initial_state
+    for update in build_chart_agent_graph().stream(initial_state):
+        for node_name, node_state in update.items():
+            final_state = node_state
+            yield {"type": "progress", "nodeName": node_name, "state": node_state}
+
+    action = final_state.get("chart_action") or ChartAgentAction(
+        type="error",
+        code="agent_no_action",
+        message="Agent 未生成有效图表动作。",
+    )
+    yield {
+        "type": "final",
+        "response": ChartAgentResponse(
+            conversationId=chart_request.conversation_id,
+            intent=final_state.get("intent", "unknown"),
+            action=action,
+        ),
+    }
 
 
 def _text_delta(message_id: str, delta: str) -> dict[str, Any]:
@@ -443,6 +516,188 @@ def _progress_steps(tool_name: str, state: str, error_message: str | None = None
             detail = running_detail
         steps.append({"id": step_id, "title": title, "detail": detail, "status": status})
     return {"steps": steps}
+
+
+def _progress_steps_for_node(tool_name: str, node_name: str, workflow_state: dict[str, Any]) -> dict[str, Any]:
+    failed_step = _failed_step_for_state(tool_name, node_name, workflow_state)
+    if failed_step:
+        return _progress_steps_with_marks(
+            tool_name,
+            completed=_completed_steps_before(tool_name, failed_step),
+            running=None,
+            failed=failed_step,
+            error_message=(workflow_state.get("errors") or ["处理失败"])[0],
+        )
+
+    completed = _completed_steps_for_node(tool_name, node_name)
+    running = _running_step_after_node(tool_name, node_name)
+    return _progress_steps_with_marks(tool_name, completed=completed, running=running)
+
+
+def _progress_steps_with_marks(
+    tool_name: str,
+    completed: set[str],
+    running: str | None = None,
+    failed: str | None = None,
+    error_message: str | None = None,
+) -> dict[str, Any]:
+    snapshot = _progress_steps(tool_name, "running")
+    for step in snapshot["steps"]:
+        step_id = step["id"]
+        if step_id in completed:
+            step["status"] = "completed"
+            step["detail"] = _completed_detail(tool_name, step_id)
+        elif step_id == failed:
+            step["status"] = "failed"
+            step["detail"] = f"处理失败：{error_message}" if error_message else "处理失败"
+        elif step_id == running:
+            step["status"] = "running"
+        else:
+            step["status"] = "pending"
+    return snapshot
+
+
+def _with_progress_metadata(
+    progress: dict[str, Any],
+    progress_id: str,
+    sequence: int,
+    is_final: bool = False,
+) -> dict[str, Any]:
+    return {**progress, "progressId": progress_id, "sequence": sequence, "isFinal": is_final}
+
+
+def _completed_steps_for_node(tool_name: str, node_name: str) -> set[str]:
+    mapping = {
+        "create_chart": {
+            "decide_tool": {"parse_create_request"},
+            "plan_data": {"parse_create_request", "plan_data"},
+            "query_data": {"parse_create_request", "plan_data", "query_data"},
+            "generate_action": {"parse_create_request", "plan_data", "query_data", "generate_chart"},
+            "validate_action": {"parse_create_request", "plan_data", "query_data", "generate_chart"},
+            "respond": {"parse_create_request", "plan_data", "query_data", "generate_chart", "sync_frontend"},
+        },
+        "update_style": {
+            "decide_tool": {"parse_style_request"},
+            "generate_action": {"parse_style_request", "read_current_chart", "generate_style_patch"},
+            "validate_action": {"parse_style_request", "read_current_chart", "generate_style_patch"},
+            "respond": {"parse_style_request", "read_current_chart", "generate_style_patch", "sync_frontend"},
+        },
+        "update_data": {
+            "decide_tool": {"parse_data_request"},
+            "plan_data": {"parse_data_request", "plan_data_update"},
+            "query_data": {"parse_data_request", "plan_data_update", "query_updated_data"},
+            "generate_action": {
+                "parse_data_request",
+                "plan_data_update",
+                "query_updated_data",
+                "generate_data_patch",
+            },
+            "validate_action": {
+                "parse_data_request",
+                "plan_data_update",
+                "query_updated_data",
+                "generate_data_patch",
+            },
+            "respond": {
+                "parse_data_request",
+                "plan_data_update",
+                "query_updated_data",
+                "generate_data_patch",
+                "sync_frontend",
+            },
+        },
+        "change_chart_type": {
+            "decide_tool": {"parse_type_request"},
+            "generate_action": {"parse_type_request", "read_current_chart", "validate_chart_type", "generate_type_patch"},
+            "validate_action": {"parse_type_request", "read_current_chart", "validate_chart_type", "generate_type_patch"},
+            "respond": {
+                "parse_type_request",
+                "read_current_chart",
+                "validate_chart_type",
+                "generate_type_patch",
+                "sync_frontend",
+            },
+        },
+    }
+    return set(mapping.get(tool_name, {}).get(node_name, set()))
+
+
+def _running_step_after_node(tool_name: str, node_name: str) -> str | None:
+    mapping = {
+        "create_chart": {
+            "decide_tool": "plan_data",
+            "plan_data": "query_data",
+            "query_data": "generate_chart",
+            "generate_action": "sync_frontend",
+            "validate_action": "sync_frontend",
+        },
+        "update_style": {
+            "decide_tool": "read_current_chart",
+            "generate_action": "sync_frontend",
+            "validate_action": "sync_frontend",
+        },
+        "update_data": {
+            "decide_tool": "plan_data_update",
+            "plan_data": "query_updated_data",
+            "query_data": "generate_data_patch",
+            "generate_action": "sync_frontend",
+            "validate_action": "sync_frontend",
+        },
+        "change_chart_type": {
+            "decide_tool": "read_current_chart",
+            "generate_action": "sync_frontend",
+            "validate_action": "sync_frontend",
+        },
+    }
+    return mapping.get(tool_name, {}).get(node_name)
+
+
+def _failed_step_for_state(tool_name: str, node_name: str, workflow_state: dict[str, Any]) -> str | None:
+    if not workflow_state.get("errors"):
+        return None
+    fallback = _running_step_after_node(tool_name, node_name)
+    if fallback:
+        return fallback
+    completed = _completed_steps_for_node(tool_name, node_name)
+    return next((step["id"] for step in _progress_steps(tool_name, "running")["steps"] if step["id"] not in completed), None)
+
+
+def _failed_progress_for_final_action(
+    tool_name: str,
+    node_name: str,
+    workflow_state: dict[str, Any],
+    error_message: str,
+) -> dict[str, Any]:
+    failed_step = _failed_step_for_state(tool_name, node_name, workflow_state)
+    if not failed_step:
+        failed_step = {
+            "create_chart": "generate_chart",
+            "update_style": "read_current_chart",
+            "update_data": "generate_data_patch",
+            "change_chart_type": "read_current_chart",
+        }.get(tool_name, _progress_steps(tool_name, "running")["steps"][0]["id"])
+    return _progress_steps_with_marks(
+        tool_name,
+        completed=_completed_steps_before(tool_name, failed_step),
+        failed=failed_step,
+        error_message=error_message,
+    )
+
+
+def _completed_steps_before(tool_name: str, step_id: str) -> set[str]:
+    completed = set()
+    for step in _progress_steps(tool_name, "running")["steps"]:
+        if step["id"] == step_id:
+            return completed
+        completed.add(step["id"])
+    return completed
+
+
+def _completed_detail(tool_name: str, step_id: str) -> str:
+    for step in _progress_steps(tool_name, "completed")["steps"]:
+        if step["id"] == step_id:
+            return step["detail"]
+    return "已完成"
 
 
 def _event_timestamp() -> int:
