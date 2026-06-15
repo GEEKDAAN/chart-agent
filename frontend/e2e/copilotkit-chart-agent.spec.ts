@@ -123,15 +123,41 @@ async function sendPrompt(
   await expect(page.getByText(prompt)).toBeVisible();
   const response = await responsePromise;
   const content = await response.text();
+  const events = readSseEvents(content);
+  const toolStartNames = events
+    .filter((event) => event.type === "TOOL_CALL_START")
+    .map((event) => event.toolCallName);
 
   if (expectProgress) {
-    expect(content).toContain('"type":"TOOL_CALL_START"');
-    expect(content).toContain("chartAgentProgress");
+    expect(toolStartNames).toContain("chartAgentProgress");
+    expect(toolStartNames).toContain("chartAgentAction");
     expect(content).toContain('\\"sequence\\":');
     await expect(page.locator(".chat-progress").last()).toContainText("识别");
     await expect(page.locator(".chat-progress").last()).toContainText("已完成", { timeout: 12_000 });
   } else {
-    expect(content).not.toContain('"type":"TOOL_CALL_START"');
+    expect(toolStartNames).not.toContain("chartAgentProgress");
+    expect(toolStartNames).not.toContain("chartAgentAction");
     await expect(page.locator(".chat-progress")).toHaveCount(progressCount);
   }
+}
+
+function readSseEvents(content: string): Record<string, any>[] {
+  return content
+    .split("\n\n")
+    .map((block) =>
+      block
+        .split("\n")
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trim())
+        .join("\n"),
+    )
+    .filter(Boolean)
+    .map((value) => {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return null;
+      }
+    })
+    .filter((value): value is Record<string, any> => Boolean(value && typeof value === "object"));
 }

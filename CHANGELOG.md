@@ -33,6 +33,19 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.2] - 2026-06-15
+
+- 【Runtime】：
+  1. 新增 `chartAgentAction` 工具事件，用于传递后端返回的 `ChartAgentAction`，不再把图表动作塞进 assistant 文本隐藏注释。
+  2. `chartAgentProgress` 继续只负责步骤面板，`chartAgentAction` 专门负责图表创建和修改动作，两个通道职责分离。
+  3. assistant 文本回复收敛为纯自然语言内容，不再包含 `chart-agent-action` marker。
+- 【前端】：
+  1. 新增 `useRenderTool(chartAgentAction)` 接收器，根据工具结果应用图表动作，并通过 `actionId` 去重。
+  2. 移除基于 assistant 消息扫描隐藏 marker 的动作桥接逻辑。
+  3. 更新前端版本号和界面版本标识为 `0.11.2`。
+- 【后端】：
+  1. 更新 FastAPI 应用版本为 `0.11.2`。
+
 ## [0.11.1] - 2026-06-15
 
 - 【Runtime】：

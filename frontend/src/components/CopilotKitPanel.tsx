@@ -3,7 +3,6 @@ import {
   CopilotKitProvider,
   CopilotSidebar,
   useRenderTool,
-  useAgent,
   useAgentContext,
   useConfigureSuggestions
 } from "@copilotkit/react-core/v2";
@@ -11,6 +10,7 @@ import { z } from "zod";
 import "@copilotkit/react-core/v2/styles.css";
 
 import { copilotRuntimeUrl, isCopilotEnabled } from "../lib/config";
+import { useLatestChartAgentAction } from "../lib/chartAgentActionStore";
 import { useChartAgentProgress } from "../lib/chartAgentProgressStore";
 import {
   installCopilotRuntimeContextPatch,
@@ -46,6 +46,11 @@ const progressParametersSchema = z.object({
   steps: z.array(progressStepSchema)
 });
 
+const actionParametersSchema = z.object({
+  actionId: z.string().optional(),
+  actionType: z.enum(["create_chart", "update_chart"]).optional()
+});
+
 const suggestions = [
   { title: "生成图表", message: "看最近30天各渠道销售额" },
   { title: "修改样式", message: "把抖音改成红色" },
@@ -77,7 +82,7 @@ export function CopilotKitPanel({ chart, onApplyAction, onApplyError }: CopilotK
     >
       <CopilotRuntimeContextBridge context={runtimeContext} />
       <ChartAgentProgressRenderer />
-      <CopilotActionBridge onApplyAction={onApplyAction} onApplyError={onApplyError} />
+      <ChartAgentActionRenderer onApplyAction={onApplyAction} onApplyError={onApplyError} />
       <CopilotSidebar
         agentId="chart-agent"
         defaultOpen
@@ -118,33 +123,74 @@ function CopilotRuntimeContextBridge({ context }: { context: ChartAgentRuntimeCo
   return null;
 }
 
-function CopilotActionBridge({
+function ChartAgentActionRenderer({
   onApplyAction,
   onApplyError
 }: {
   onApplyAction: (action: ChartAgentAction) => void;
   onApplyError: (error: unknown) => void;
 }) {
-  const { agent } = useAgent({ agentId: "chart-agent" });
-  const appliedMessageIds = useRef(new Set<string>());
+  const appliedActionIds = useRef(new Set<string>());
+  const streamedAction = useLatestChartAgentAction();
 
   useEffect(() => {
-    for (const message of agent.messages) {
-      if (message.role !== "assistant" || typeof message.content !== "string") continue;
-      if (appliedMessageIds.current.has(message.id)) continue;
+    if (!streamedAction || appliedActionIds.current.has(streamedAction.actionId)) return;
 
-      const action = extractActionMarker(message.content);
-      if (!action) continue;
-
-      try {
-        onApplyAction(action);
-      } catch (error) {
-        onApplyError(error);
-      } finally {
-        appliedMessageIds.current.add(message.id);
-      }
+    try {
+      onApplyAction(streamedAction.action);
+      appliedActionIds.current.add(streamedAction.actionId);
+    } catch (error) {
+      onApplyError(error);
+      appliedActionIds.current.add(streamedAction.actionId);
     }
-  }, [agent.messages, onApplyAction, onApplyError]);
+  }, [streamedAction, onApplyAction, onApplyError]);
+
+  useRenderTool({
+    name: "chartAgentAction",
+    parameters: actionParametersSchema,
+    render: ({ parameters, result }) => {
+      const payload = readActionPayload(result);
+      const actionId = payload?.actionId ?? parameters.actionId;
+      const action = payload?.action ?? null;
+      return (
+        <ChartAgentActionApplier
+          action={action}
+          actionId={actionId}
+          appliedActionIds={appliedActionIds.current}
+          onApplyAction={onApplyAction}
+          onApplyError={onApplyError}
+        />
+      );
+    }
+  });
+
+  return null;
+}
+
+function ChartAgentActionApplier({
+  action,
+  actionId,
+  appliedActionIds,
+  onApplyAction,
+  onApplyError
+}: {
+  action: ChartAgentAction | null;
+  actionId: string | undefined;
+  appliedActionIds: Set<string>;
+  onApplyAction: (action: ChartAgentAction) => void;
+  onApplyError: (error: unknown) => void;
+}) {
+  useEffect(() => {
+    if (!action || !actionId || appliedActionIds.has(actionId)) return;
+
+    try {
+      onApplyAction(action);
+      appliedActionIds.add(actionId);
+    } catch (error) {
+      onApplyError(error);
+      appliedActionIds.add(actionId);
+    }
+  }, [action, actionId, appliedActionIds, onApplyAction, onApplyError]);
 
   return null;
 }
@@ -215,6 +261,36 @@ function readProgressId(result: unknown): string | undefined {
   return validation.success ? validation.data.progressId : undefined;
 }
 
+function readActionPayload(result: unknown): { actionId?: string; action: ChartAgentAction | null } | null {
+  if (!result) return null;
+
+  const parsed = typeof result === "string" ? safeJsonParse(result) : result;
+  if (!parsed || typeof parsed !== "object") return null;
+
+  const value = parsed as Record<string, unknown>;
+  const action = value.action;
+  return {
+    actionId: typeof value.actionId === "string" ? value.actionId : undefined,
+    action: isChartAgentAction(action) ? action : null
+  };
+}
+
+function isChartAgentAction(value: unknown): value is ChartAgentAction {
+  if (!value || typeof value !== "object") return false;
+
+  const action = value as Record<string, unknown>;
+  if (action.type === "create_chart") {
+    return typeof action.message === "string" && Boolean(action.chart && typeof action.chart === "object");
+  }
+  if (action.type === "update_chart") {
+    return typeof action.message === "string" && typeof action.chartId === "string" && Boolean(action.patch && typeof action.patch === "object");
+  }
+  if (action.type === "error") {
+    return typeof action.message === "string" && typeof action.code === "string";
+  }
+  return false;
+}
+
 function safeJsonParse(value: string): unknown {
   try {
     return JSON.parse(value);
@@ -225,18 +301,6 @@ function safeJsonParse(value: string): unknown {
 
 function toJsonSerializable(value: unknown): JsonSerializable {
   return JSON.parse(JSON.stringify(value)) as JsonSerializable;
-}
-
-function extractActionMarker(content: string): ChartAgentAction | null {
-  const match = content.match(/<!--\s*chart-agent-action:([A-Za-z0-9+/=]+)\s*-->/);
-  if (!match) return null;
-
-  try {
-    const bytes = Uint8Array.from(atob(match[1]), (character) => character.charCodeAt(0));
-    return JSON.parse(new TextDecoder().decode(bytes)) as ChartAgentAction;
-  } catch {
-    return null;
-  }
 }
 
 function buildInstructions(chart: ChartSpec | null): string {

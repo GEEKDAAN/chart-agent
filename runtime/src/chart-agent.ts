@@ -30,13 +30,11 @@ type RuntimeContext = {
   };
 };
 
-const nonFailureCodes = new Set(["explanation", "smalltalk", "help", "out_of_scope", "clarification_required"]);
-
 export class ChartAgent extends AbstractAgent {
   constructor({ backendUrl }: ChartAgentOptions) {
     super({
       agentId: "chart-agent",
-      description: "生成和编辑受控 ChartSpec 图表。"
+      description: "Generate and edit validated ChartSpec charts."
     });
     process.env.CHART_AGENT_BACKEND_URL = normalizeBackendUrl(backendUrl);
   }
@@ -47,10 +45,14 @@ export class ChartAgent extends AbstractAgent {
     });
   }
 
-  private async runChartAgent(input: RunAgentInput, subscriber: { next: (event: BaseEvent) => void; error: (error: unknown) => void; complete: () => void }) {
+  private async runChartAgent(
+    input: RunAgentInput,
+    subscriber: { next: (event: BaseEvent) => void; error: (error: unknown) => void; complete: () => void }
+  ) {
     const messageId = `msg-${crypto.randomUUID()}`;
-    const toolCallId = `tool-${crypto.randomUUID()}`;
-    let toolCallStarted = false;
+    const progressToolCallId = `progress-${crypto.randomUUID()}`;
+    const actionToolCallId = `action-${crypto.randomUUID()}`;
+    let progressToolStarted = false;
     let progressIntent = "create_chart";
 
     subscriber.next({
@@ -70,41 +72,11 @@ export class ChartAgent extends AbstractAgent {
       const context = resolveRuntimeContext(input);
       const chartResponse = await this.requestChartAgent(input, message, context);
       progressIntent = chartResponse.intent;
-      const snapshots = progressSnapshots(chartResponse.intent, toolCallId, "completed");
-      if (snapshots.length > 0) {
-        const [initialProgress] = snapshots;
-        toolCallStarted = true;
-        subscriber.next({
-          type: "TOOL_CALL_START",
-          toolCallId,
-          toolCallName: "chartAgentProgress",
-          parentMessageId: messageId,
-          rawEvent: { parameters: initialProgress },
-          timestamp: 0
-        } as BaseEvent);
-        for (const snapshot of snapshots.slice(0, -1)) {
-          subscriber.next({
-            type: "TOOL_CALL_ARGS",
-            toolCallId,
-            delta: JSON.stringify(snapshot),
-            timestamp: 0
-          } as BaseEvent);
-        }
-        const finalSnapshot = snapshots.at(-1) ?? initialProgress;
-        subscriber.next({
-          type: "TOOL_CALL_RESULT",
-          messageId: `tool-result-${toolCallId}-1`,
-          toolCallId,
-          content: JSON.stringify(finalSnapshot),
-          role: "tool",
-          timestamp: 0
-        } as BaseEvent);
-        subscriber.next({
-          type: "TOOL_CALL_END",
-          toolCallId,
-          timestamp: 0
-        } as BaseEvent);
-      }
+
+      emitProgressEvents(subscriber, messageId, progressToolCallId, chartResponse.intent, () => {
+        progressToolStarted = true;
+      });
+      emitActionEvent(subscriber, messageId, actionToolCallId, chartResponse);
 
       subscriber.next({
         type: "TEXT_MESSAGE_CONTENT",
@@ -121,18 +93,18 @@ export class ChartAgent extends AbstractAgent {
       subscriber.complete();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (toolCallStarted) {
+      if (progressToolStarted) {
         subscriber.next({
           type: "TOOL_CALL_RESULT",
-          messageId: `tool-result-${toolCallId}-failed`,
-          toolCallId,
-          content: JSON.stringify(progressSnapshot(progressIntent, toolCallId, 1, "failed")),
+          messageId: `tool-result-${progressToolCallId}-failed`,
+          toolCallId: progressToolCallId,
+          content: JSON.stringify(progressSnapshot(progressIntent, progressToolCallId, 1, "failed")),
           role: "tool",
           timestamp: 0
         } as BaseEvent);
         subscriber.next({
           type: "TOOL_CALL_END",
-          toolCallId,
+          toolCallId: progressToolCallId,
           timestamp: 0
         } as BaseEvent);
       }
@@ -173,6 +145,80 @@ export class ChartAgent extends AbstractAgent {
   }
 }
 
+function emitProgressEvents(
+  subscriber: { next: (event: BaseEvent) => void },
+  messageId: string,
+  toolCallId: string,
+  intent: string,
+  onStarted: () => void
+) {
+  const snapshots = progressSnapshots(intent, toolCallId, "completed");
+  if (snapshots.length === 0) return;
+
+  const [initialProgress] = snapshots;
+  onStarted();
+  subscriber.next({
+    type: "TOOL_CALL_START",
+    toolCallId,
+    toolCallName: "chartAgentProgress",
+    parentMessageId: messageId,
+    rawEvent: { parameters: initialProgress },
+    timestamp: 0
+  } as BaseEvent);
+  for (const snapshot of snapshots.slice(0, -1)) {
+    subscriber.next({
+      type: "TOOL_CALL_ARGS",
+      toolCallId,
+      delta: JSON.stringify(snapshot),
+      timestamp: 0
+    } as BaseEvent);
+  }
+  subscriber.next({
+    type: "TOOL_CALL_RESULT",
+    messageId: `tool-result-${toolCallId}-1`,
+    toolCallId,
+    content: JSON.stringify(snapshots.at(-1) ?? initialProgress),
+    role: "tool",
+    timestamp: 0
+  } as BaseEvent);
+  subscriber.next({
+    type: "TOOL_CALL_END",
+    toolCallId,
+    timestamp: 0
+  } as BaseEvent);
+}
+
+function emitActionEvent(
+  subscriber: { next: (event: BaseEvent) => void },
+  messageId: string,
+  toolCallId: string,
+  response: ChartAgentResponse
+) {
+  if (!shouldEmitChartAction(response)) return;
+
+  subscriber.next({
+    type: "TOOL_CALL_START",
+    toolCallId,
+    toolCallName: "chartAgentAction",
+    parentMessageId: messageId,
+    rawEvent: { parameters: { actionId: toolCallId, actionType: response.action.type } },
+    timestamp: 0
+  } as BaseEvent);
+  subscriber.next({
+    type: "TOOL_CALL_RESULT",
+    messageId: `tool-result-${toolCallId}-1`,
+    toolCallId,
+    content: JSON.stringify({ actionId: toolCallId, action: response.action }),
+    role: "tool",
+    timestamp: 0
+  } as BaseEvent);
+  subscriber.next({
+    type: "TOOL_CALL_END",
+    toolCallId,
+    timestamp: 0
+  } as BaseEvent);
+}
+
 function lastUserMessage(messages: Message[] | undefined): string {
   for (const message of [...(messages ?? [])].reverse()) {
     if (message.role !== "user") continue;
@@ -195,26 +241,12 @@ function resolveRuntimeContext(input: RunAgentInput): RuntimeContext {
   return { ...chartAgentContext, ...forwardedProps } as RuntimeContext;
 }
 
-function previewProgressIntent(message: string, hasCurrentChart: boolean): string {
-  if (/换成|改成.*图|折线图|柱状图|饼图|表格/.test(message)) return "change_chart_type";
-  if (/颜色|红色|蓝色|绿色|样式/.test(message)) return "update_style";
-  if (/加一列|新增|利润率|指标/.test(message)) return "update_data";
-  if (hasCurrentChart && /哪些|多少|解释|说明|这个图|图表/.test(message)) return "answer_current_chart_question";
-  if (/你好|您好|hello|hi/i.test(message)) return "smalltalk";
-  return "create_chart";
-}
-
 function formatChartAgentResponse(response: ChartAgentResponse): string {
-  const action = response.action;
-  if (action.type === "error") {
-    return action.message;
-  }
-
-  return `${action.message}\n\n当前版本已通过 CopilotKit 官方 Runtime SDK PoC 调用后端图表 Agent。\n\n<!-- chart-agent-action:${encodeMarker(action)} -->`;
+  return response.action.message;
 }
 
-function encodeMarker(value: unknown): string {
-  return Buffer.from(JSON.stringify(value), "utf8").toString("base64");
+function shouldEmitChartAction(response: ChartAgentResponse): boolean {
+  return response.action.type === "create_chart" || response.action.type === "update_chart";
 }
 
 function stripContextMarker(content: string): string {

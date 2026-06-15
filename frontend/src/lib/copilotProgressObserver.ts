@@ -1,4 +1,6 @@
 import { publishChartAgentProgress } from "./chartAgentProgressStore";
+import { publishChartAgentAction } from "./chartAgentActionStore";
+import type { ChartAgentAction } from "../types/chart";
 import type { ProgressSnapshot } from "../types/progress";
 
 export function observeCopilotProgress(response: Response) {
@@ -51,6 +53,7 @@ function publishProgressFromSseBlock(block: string) {
   }
   if (value.type === "TOOL_CALL_RESULT") {
     publishSnapshotFromUnknown(value.content);
+    publishActionFromUnknown(value.content);
   }
 }
 
@@ -73,4 +76,29 @@ function isProgressSnapshot(value: unknown): value is ProgressSnapshot {
   if (!value || typeof value !== "object") return false;
   const snapshot = value as ProgressSnapshot;
   return typeof snapshot.progressId === "string" && Array.isArray(snapshot.steps);
+}
+
+function publishActionFromUnknown(value: unknown) {
+  const payload = typeof value === "string" ? safeParseJson(value) : value;
+  if (!payload || typeof payload !== "object") return;
+
+  const record = payload as Record<string, unknown>;
+  if (typeof record.actionId !== "string" || !isChartAgentAction(record.action)) return;
+  publishChartAgentAction({ actionId: record.actionId, action: record.action });
+}
+
+function isChartAgentAction(value: unknown): value is ChartAgentAction {
+  if (!value || typeof value !== "object") return false;
+
+  const action = value as Record<string, unknown>;
+  if (action.type === "create_chart") {
+    return typeof action.message === "string" && Boolean(action.chart && typeof action.chart === "object");
+  }
+  if (action.type === "update_chart") {
+    return typeof action.message === "string" && typeof action.chartId === "string" && Boolean(action.patch && typeof action.patch === "object");
+  }
+  if (action.type === "error") {
+    return typeof action.message === "string" && typeof action.code === "string";
+  }
+  return false;
 }
