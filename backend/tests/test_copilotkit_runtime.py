@@ -1,16 +1,16 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.routers.copilotkit import _progress_steps
+from app.services.progress import progress_steps
 
 
 client = TestClient(app)
 
 
 def test_progress_steps_are_specific_to_tool_name():
-    create_steps = _progress_steps("create_chart", "running")["steps"]
-    update_data_steps = _progress_steps("update_data", "running")["steps"]
-    change_type_steps = _progress_steps("change_chart_type", "running")["steps"]
+    create_steps = progress_steps("create_chart", "running")["steps"]
+    update_data_steps = progress_steps("update_data", "running")["steps"]
+    change_type_steps = progress_steps("change_chart_type", "running")["steps"]
 
     assert [step["id"] for step in create_steps] == [
         "parse_create_request",
@@ -38,7 +38,7 @@ def test_progress_steps_are_specific_to_tool_name():
 
 
 def test_progress_steps_mark_all_steps_completed_for_final_snapshot():
-    steps = _progress_steps("update_style", "completed")["steps"]
+    steps = progress_steps("update_style", "completed")["steps"]
 
     assert [step["id"] for step in steps] == [
         "parse_style_request",

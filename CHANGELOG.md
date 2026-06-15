@@ -33,6 +33,24 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.10.4] - 2026-06-14
+
+- 【前端】：
+  1. 将 CopilotKit Runtime SSE 进度观察逻辑拆分到 `copilotProgressObserver`，`copilotRuntimeContext` 只负责请求上下文注入。
+  2. 更新前端版本号和界面版本标识为 `0.10.4`。
+
+- 【后端】：
+  1. 新增 `app.services.progress` 模块，集中维护 `chartAgentProgress` 步骤模板、LangGraph 节点映射、失败态和元数据封装。
+  2. 精简 CopilotKit Runtime router，移除未使用的旧进度模板，路由只负责 Runtime 编排和 SSE 输出。
+  3. 更新 FastAPI 应用版本为 `0.10.4`。
+
+- 【文档】：
+  1. 新增 `docs/progress-protocol.md`，说明 `chartAgentProgress` 的职责边界、payload、维护规则和当前限制。
+  2. 在前端 README 中补充进度协议文档入口。
+
+- 【测试】：
+  1. 调整 Runtime 测试直接覆盖 `app.services.progress`，避免测试依赖 router 内部实现。
+
 ## [0.10.3] - 2026-06-14
 
 - 【前端补充】：

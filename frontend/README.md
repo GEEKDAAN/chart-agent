@@ -25,6 +25,8 @@ CopilotKit 聊天消息内会展示结构化执行步骤，用于说明当前 Ag
 
 步骤数据来自后端 Runtime 输出的 AG-UI tool call 事件，前端通过 CopilotKit `useRenderTool` 注册 `chartAgentProgress` 渲染器展示。当前实现不再维护主工作区外置步骤面板，也不再使用 `chart-agent-step` 隐藏 marker。
 
+进度协议维护说明见根目录 `docs/progress-protocol.md`。
+
 ## 本地运行
 
 ```bash
