@@ -33,6 +33,29 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.0] - 2026-06-15
+
+- 【Runtime】：
+  1. 新增 `runtime/` Node 服务，使用官方 `@copilotkit/runtime/v2` + Express 接管 `/copilotkit` Runtime 入口。
+  2. 新增自定义 AG-UI `ChartAgent`，将 CopilotKit 消息和当前图表上下文转发到 FastAPI `/chart-agent/chat`。
+  3. 在 Node Runtime 中输出 `chartAgentProgress` 工具事件，继续复用前端 `useRenderTool` 步骤卡。
+
+- 【后端】：
+  1. FastAPI 不再挂载自研 `/copilotkit` Runtime router，只保留图表业务接口 `/chart-agent/chat`。
+  2. 更新 FastAPI 应用版本为 `0.11.0`。
+
+- 【前端】：
+  1. Vite 代理拆分为 `VITE_BACKEND_PROXY_URL` 和 `VITE_COPILOT_RUNTIME_PROXY_URL`，分别指向 FastAPI 和 Node Runtime。
+  2. 更新前端版本号和界面版本标识为 `0.11.0`。
+
+- 【文档】：
+  1. 新增 `docs/copilotkit-runtime-poc.md`，记录官方 Runtime SDK PoC 的可行性结论、限制和后续建议。
+  2. 更新根 README、后端 README、前端 README 和进度协议文档，说明三服务本地运行拓扑。
+
+- 【测试】：
+  1. Playwright E2E 改为自动启动 FastAPI、Node Runtime 和前端三类服务。
+  2. 验证官方 Runtime SDK 链路下图表生成、图表编辑、当前图表问答和步骤卡渲染仍可运行。
+
 ## [0.10.4] - 2026-06-14
 
 - 【前端】：

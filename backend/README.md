@@ -72,27 +72,9 @@ OPENAI_BASE_URL=https://ai.allrealai.com/v1
 
 ## CopilotKit Runtime
 
-后端提供 `/copilotkit` 作为 CopilotKit v2 single-endpoint Runtime 端点，当前支持：
+`0.11.0` PoC 中，FastAPI 后端不再提供 `/copilotkit` Runtime 端点。
 
-- Runtime Info：`POST /copilotkit`，请求体为 `{ "method": "info" }`
-- Runtime Info：`GET /copilotkit/info`
-- Agent 连接：`POST /copilotkit`，请求体为 `{ "method": "agent/connect", ... }`
-- Agent 连接：`POST /copilotkit/agent/{agent_id}/connect`
-- Agent 运行：`POST /copilotkit`，请求体为 `{ "method": "agent/run", ... }`
-- Agent 运行：`POST /copilotkit/agent/{agent_id}/run`
-
-`agent/run` 会读取 CopilotKit 消息中的最后一条用户文本，并结合前端传入的当前图表上下文，转接到现有 `ChartAgent` workflow。
-
-当前上下文解析会兼容多个位置：
-
-- `variables.properties`
-- `variables.data.properties`
-- `variables.data.metadata.chartAgentContext`
-- `variables.data.metadata.properties`
-- `variables.data.frontend.chartAgentContext`
-- 消息中的隐藏 `chart-agent-context` 标记
-
-当前版本会通过 SSE 返回 `RUN_STARTED`、`TEXT_MESSAGE_START`、`TEXT_MESSAGE_CONTENT`、`TEXT_MESSAGE_END` 和 `RUN_FINISHED` 事件。`agent/run` 会在同一条 assistant 消息中分段输出执行状态，包括需求解析、上下文读取、workflow 运行、图表同步和失败原因；最终响应会附带不可见的 `ChartAgentAction` 标记，前端会解析该标记并自动应用图表变更。
+CopilotKit Runtime 由根目录 `runtime/` 下的 Node 服务提供，Node Runtime 会把用户消息和当前图表上下文转发到本后端 `/chart-agent/chat` 接口。
 
 ## 本地运行
 

@@ -4,8 +4,8 @@
 
 ## 职责边界
 
-- 后端 LangGraph Agent 负责真实业务执行和步骤状态判断。
-- 后端 CopilotKit Runtime 负责把步骤状态转换为 AG-UI tool call SSE 事件。
+- FastAPI LangGraph Agent 负责真实业务执行和图表 action 生成。
+- Node CopilotKit Runtime 负责把步骤状态转换为 AG-UI tool call SSE 事件。
 - 前端 CopilotKit `useRenderTool(chartAgentProgress)` 负责把工具调用渲染在原生聊天消息内。
 - 前端 `chartAgentProgressStore` 只负责按 `progressId + sequence` 播放快照，不参与业务判断。
 - 当前阶段不注册业务型 `useFrontendTool`，避免前后端形成两套执行通道。
@@ -52,15 +52,15 @@
 
 新增或修改步骤时优先调整：
 
-- 后端：`backend/app/services/progress.py`
+- Runtime：`runtime/src/progress.ts`
 - 前端类型：`frontend/src/types/progress.ts`
 - 前端渲染：`frontend/src/components/CopilotKitPanel.tsx`
-- Runtime 测试：`backend/tests/test_copilotkit_runtime.py`
+- E2E 测试：`frontend/e2e/copilotkit-chart-agent.spec.ts`
 
-不要在 `backend/app/routers/copilotkit.py` 中新增步骤模板或节点映射。该路由只负责 CopilotKit Runtime 请求解析、SSE 生命周期和调用 Agent。
+不要在 FastAPI 业务后端中新增 CopilotKit Runtime 协议逻辑。当前 PoC 中 `/copilotkit` 入口由 `runtime/` 负责。
 
 ## 当前限制
 
-- 进度流转来自 LangGraph 节点级快照，不是节点内部 token 级或子任务级实时状态。
+- `0.11.0` PoC 暂时只恢复开始/完成快照，尚未恢复 `0.10.3` 的 LangGraph 节点级连续流转。
 - 前端通过 `fetch` patch 镜像 CopilotKit SSE，属于过渡实现；切换官方完整 Runtime SDK 时应优先评估是否能移除这层 patch。
 - 最小展示时长由前端控制，因此视觉进度可能略晚于后端真实完成时间。

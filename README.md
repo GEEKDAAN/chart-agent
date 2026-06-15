@@ -19,13 +19,15 @@
 - FastAPI
 - LangGraph
 - OpenAI API（可选）
-- CopilotKit（前端侧边栏和 Runtime 兼容端点）
+- CopilotKit（前端侧边栏）
+- CopilotKit 官方 Runtime SDK PoC（Node Runtime 服务）
 - Python 语义指标层
 
 ## 目录结构
 
 ```text
-backend/   FastAPI 接口、协议模型、LangGraph workflow、mock 指标查询
+backend/   FastAPI 图表业务接口、协议模型、LangGraph workflow、mock 指标查询
+runtime/   CopilotKit 官方 Runtime SDK PoC，负责 /copilotkit 入口
 frontend/  React 应用、CopilotKit 侧边栏、ChartSpec runtime 和 ECharts 渲染
 docs/      架构说明和设计文档
 ```
@@ -60,14 +62,21 @@ npm.cmd run dev
 CopilotKit 本地联调：
 
 ```bash
-# 后端：建议用独立端口启动当前代码，避免和已有 8000 进程冲突
+# 后端：图表业务 Agent
 cd backend
 set CHART_AGENT_LLM_MODE=off
-uvicorn app.main:app --reload --port 8002
+uvicorn app.main:app --reload --port 8004
 
-# 前端：在 frontend/.env 中配置相对 Runtime 地址和后端代理地址
+# Runtime：官方 CopilotKit Runtime SDK PoC
+cd runtime
+set PORT=8014
+set CHART_AGENT_BACKEND_URL=http://127.0.0.1:8004
+npm.cmd run dev
+
+# 前端：在 frontend/.env 中配置代理
 VITE_COPILOT_RUNTIME_URL=/copilotkit
-VITE_BACKEND_PROXY_URL=http://localhost:8002
+VITE_BACKEND_PROXY_URL=http://127.0.0.1:8004
+VITE_COPILOT_RUNTIME_PROXY_URL=http://127.0.0.1:8014
 ```
 
 说明：
@@ -94,7 +103,7 @@ http://localhost:5173
 - LangGraph 单 Agent workflow
 - 可选真实 LLM 结构化 action 生成
 - CopilotKit 前端侧边栏
-- CopilotKit Runtime 最小兼容端点
+- CopilotKit 官方 Runtime SDK PoC
 - CopilotKit 图表 action 自动应用
 - CopilotKit 聊天内结构化执行步骤渲染
 - 非流式 JSON 响应
@@ -105,7 +114,7 @@ http://localhost:5173
 - 图表持久化和分享
 - 复杂下钻
 - 多图联动
-- CopilotKit 流式响应
+- LangGraph 节点级进度在官方 Runtime 中的完整恢复
 - Agent 直接写 SQL
 
 ## 更新日志
@@ -121,4 +130,4 @@ cd frontend
 npm.cmd run test:e2e
 ```
 
-测试默认会自动启动或复用 `127.0.0.1:8004` 后端和 `127.0.0.1:5178` 前端服务，并以 `CHART_AGENT_LLM_MODE=off` 运行，避免外部 LLM 影响本地验证稳定性。
+测试默认会自动启动或复用 FastAPI 后端、Node Runtime 和前端服务，并以 `CHART_AGENT_LLM_MODE=off` 运行，避免外部 LLM 影响本地验证稳定性。
