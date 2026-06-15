@@ -2,7 +2,7 @@ import { AbstractAgent } from "@ag-ui/client";
 import type { BaseEvent, Message, RunAgentInput } from "@ag-ui/core";
 import { Observable } from "rxjs";
 
-import { progressSnapshot, shouldRenderProgress } from "./progress.js";
+import { progressSnapshot, progressSnapshots } from "./progress.js";
 
 type ChartAgentOptions = {
   backendUrl: string;
@@ -68,9 +68,11 @@ export class ChartAgent extends AbstractAgent {
       }
 
       const context = resolveRuntimeContext(input);
-      progressIntent = previewProgressIntent(message, Boolean(context.currentChart));
-      if (shouldRenderProgress(progressIntent)) {
-        const initialProgress = progressSnapshot(progressIntent, toolCallId, 0, "running");
+      const chartResponse = await this.requestChartAgent(input, message, context);
+      progressIntent = chartResponse.intent;
+      const snapshots = progressSnapshots(chartResponse.intent, toolCallId, "completed");
+      if (snapshots.length > 0) {
+        const [initialProgress] = snapshots;
         toolCallStarted = true;
         subscriber.next({
           type: "TOOL_CALL_START",
@@ -80,22 +82,20 @@ export class ChartAgent extends AbstractAgent {
           rawEvent: { parameters: initialProgress },
           timestamp: 0
         } as BaseEvent);
-        subscriber.next({
-          type: "TOOL_CALL_ARGS",
-          toolCallId,
-          delta: JSON.stringify(initialProgress),
-          timestamp: 0
-        } as BaseEvent);
-      }
-
-      const chartResponse = await this.requestChartAgent(input, message, context);
-      const shouldRender = shouldRenderProgress(chartResponse.intent);
-      if (shouldRender) {
+        for (const snapshot of snapshots.slice(0, -1)) {
+          subscriber.next({
+            type: "TOOL_CALL_ARGS",
+            toolCallId,
+            delta: JSON.stringify(snapshot),
+            timestamp: 0
+          } as BaseEvent);
+        }
+        const finalSnapshot = snapshots.at(-1) ?? initialProgress;
         subscriber.next({
           type: "TOOL_CALL_RESULT",
           messageId: `tool-result-${toolCallId}-1`,
           toolCallId,
-          content: JSON.stringify(progressSnapshot(chartResponse.intent, toolCallId, 1, "completed")),
+          content: JSON.stringify(finalSnapshot),
           role: "tool",
           timestamp: 0
         } as BaseEvent);

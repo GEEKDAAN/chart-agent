@@ -46,6 +46,32 @@ export function shouldRenderProgress(intent: string): boolean {
   return Object.prototype.hasOwnProperty.call(templates, intent);
 }
 
+export function progressSnapshots(intent: string, progressId: string, finalState: "completed" | "failed"): ProgressSnapshot[] {
+  const template = templates[intent];
+  if (!template) return [];
+
+  const snapshots: ProgressSnapshot[] = [];
+  for (let activeIndex = 0; activeIndex < template.length; activeIndex += 1) {
+    snapshots.push({
+      progressId,
+      sequence: activeIndex,
+      isFinal: false,
+      steps: template.map(([id, title, runningDetail, completedDetail], index) => {
+        if (index < activeIndex) {
+          return { id, title, detail: completedDetail, status: "completed" };
+        }
+        if (index === activeIndex) {
+          return { id, title, detail: runningDetail, status: "running" };
+        }
+        return { id, title, detail: runningDetail, status: "pending" };
+      })
+    });
+  }
+
+  snapshots.push(progressSnapshot(intent, progressId, template.length, finalState));
+  return snapshots;
+}
+
 export function progressSnapshot(intent: string, progressId: string, sequence: number, state: "running" | "completed" | "failed"): ProgressSnapshot {
   const template = templates[intent] ?? templates.create_chart;
   return {
