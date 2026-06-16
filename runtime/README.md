@@ -28,6 +28,15 @@ npm.cmd run dev
 http://127.0.0.1:8014/health
 ```
 
+## 测试
+
+Runtime 契约测试使用 Node test runner，通过 mock FastAPI 响应验证 CopilotKit/AG-UI 事件输出：
+
+```powershell
+cd runtime
+npm.cmd run test
+```
+
 ## 职责边界
 
 - Node Runtime：CopilotKit 官方 Runtime endpoint、AG-UI agent、工具事件编排。

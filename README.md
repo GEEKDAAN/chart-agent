@@ -115,6 +115,13 @@ npm.cmd run test:e2e
 
 测试默认以 `CHART_AGENT_LLM_MODE=off` 运行，避免外部 LLM 影响本地验证稳定性。
 
+Runtime 契约测试覆盖 CopilotKit/AG-UI 工具事件和后端代理协议：
+
+```powershell
+cd runtime
+npm.cmd run test
+```
+
 ## 更新日志
 
 项目变更记录在 [CHANGELOG.md](CHANGELOG.md)。新增版本记录时请遵循其中定义的中文模块分组格式。
