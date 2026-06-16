@@ -33,6 +33,22 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.3] - 2026-06-15
+
+- 【工程】：
+  1. 新增 `scripts/dev.ps1`，统一启动 FastAPI、Node Runtime 和 Vite 三个本地开发服务。
+  2. 新增 `scripts/stop-dev.ps1`，根据 `tmp/dev-processes.json` 停止本地开发进程树。
+  3. 修复后台 PowerShell 启动参数和停止脚本变量兼容问题，并生成可排查的临时启动脚本，提升 Windows 本地启动稳定性。
+  4. 将 `tmp/` 加入 `.gitignore`，避免本地日志和进程文件进入版本库状态。
+- 【文档】：
+  1. 新增 `docs/local-development.md`，说明三服务职责、默认端口、LLM 模式、启动方式、停止方式和验收路径。
+  2. 重写根 `README.md`，收敛当前官方 Runtime 分支的架构、启动方式、能力范围和测试入口。
+  3. 更新 `runtime/README.md`、`frontend/README.md`、`docs/copilotkit-runtime-poc.md` 和 `docs/progress-protocol.md`，移除过期的隐藏 marker 和开始/完成快照描述。
+- 【前端】：
+  1. 更新前端版本号和界面版本标识为 `0.11.3`。
+- 【后端】：
+  1. 更新 FastAPI 应用版本为 `0.11.3`。
+
 ## [0.11.2] - 2026-06-15
 
 - 【Runtime】：

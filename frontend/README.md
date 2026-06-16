@@ -1,69 +1,65 @@
 # 前端
 
-React + Vite 前端 MVP，负责维护 `ChartSpec`、调用后端图表 Agent、校验 action 并用 ECharts 渲染图表。
+React + Vite 前端负责维护 `ChartSpec`、渲染 ECharts 图表，并通过 CopilotKit 侧边栏承接自然语言交互。
 
 ## CopilotKit
 
-前端已接入 CopilotKit 侧边栏。配置 Runtime 地址后，CopilotKit 侧边栏是当前唯一的自然语言交互入口。
+当前唯一自然语言入口是 CopilotKit 侧边栏。
 
-```bash
-VITE_COPILOT_RUNTIME_URL=/copilotkit
-VITE_BACKEND_PROXY_URL=http://localhost:8000
-VITE_COPILOT_RUNTIME_PROXY_URL=http://localhost:8014
+推荐从项目根目录统一启动：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/dev.ps1
 ```
 
-本地开发推荐使用相对路径 `/copilotkit`。当前 PoC 中，Vite 会将 `/chart-agent` 代理到 FastAPI，将 `/copilotkit` 代理到 Node CopilotKit Runtime。
+Vite 代理配置：
 
-侧边栏请求会携带当前 `ChartSpec` 上下文到后端 Runtime。前端会同时通过 CopilotKit `properties`、readable context 和 Runtime 请求体补丁传递当前图表，避免不同 CopilotKit 请求结构下丢失上下文。
+```text
+VITE_COPILOT_RUNTIME_URL=/copilotkit
+VITE_BACKEND_PROXY_URL=http://127.0.0.1:8004
+VITE_COPILOT_RUNTIME_PROXY_URL=http://127.0.0.1:8014
+```
 
-后端响应会附带不可见的 `ChartAgentAction` 标记，前端解析后复用现有 `applyChartAction` 自动刷新图表。
+请求会携带当前 `ChartSpec` 上下文到 Node Runtime，再由 Node Runtime 转发给 FastAPI。
 
-当前版本不再保留普通对话框 fallback，页面生成和编辑图表都通过 CopilotKit 侧边栏完成。
+## 工具渲染
 
-## 聊天内执行步骤
+前端注册了两个 CopilotKit 工具渲染器：
 
-CopilotKit 聊天消息内会展示结构化执行步骤，用于说明当前 Agent 请求的处理进度。内容包含需求解析、图表上下文读取、数据需求规划、后端 workflow 运行、图表变更生成和前端同步。
+- `chartAgentProgress`：在 CopilotKit 原生聊天消息中渲染结构化步骤面板。
+- `chartAgentAction`：接收图表创建和修改动作，并调用 `applyChartAction` 更新图表。
 
-步骤数据来自 Node Runtime 输出的 AG-UI tool call 事件，前端通过 CopilotKit `useRenderTool` 注册 `chartAgentProgress` 渲染器展示。当前实现不再维护主工作区外置步骤面板，也不再使用 `chart-agent-step` 隐藏 marker。
+为了避免连续请求时当前图表上下文慢一拍，前端还会镜像监听 Runtime SSE 中的 `chartAgentAction` 工具结果，并通过 `actionId` 去重。
 
-进度协议维护说明见根目录 `docs/progress-protocol.md`。
+当前实现不再使用 `chart-agent-step` 或 `chart-agent-action` 隐藏 marker。
 
 ## 本地运行
 
-```bash
+只运行前端：
+
+```powershell
 cd frontend
-npm install
-npm run dev
+npm.cmd install
+npm.cmd run dev -- --host 127.0.0.1 --port 5184
 ```
 
-如果 PowerShell 拦截 `npm.ps1`，可以使用：
+完整联调请使用根目录脚本：
 
-```bash
-npm.cmd install
-npm.cmd run dev
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/dev.ps1
 ```
 
 ## 端到端测试
 
-前端新增 Playwright E2E 测试，用于验证 CopilotKit 侧边栏到后端 Runtime、图表生成、图表编辑和上下文传递的完整链路。
-
-```bash
+```powershell
 cd frontend
 npm.cmd run test:e2e
 ```
 
-默认端口：
+E2E 会自动启动或复用本地服务：
 
-```bash
-E2E_FRONTEND_PORT=5178
-E2E_BACKEND_PORT=8004
-E2E_RUNTIME_PORT=8014
-```
+- FastAPI：`python -m uvicorn app.main:app --host 127.0.0.1 --port <E2E_BACKEND_PORT>`
+- Node Runtime：`npm.cmd run dev`
+- Vite：`npm.cmd run dev -- --host 127.0.0.1 --port <E2E_FRONTEND_PORT>`
 
-测试配置会自动启动或复用本地服务：
-
-- 后端：`python -m uvicorn app.main:app --host 127.0.0.1 --port 8004`
-- Runtime：`npm.cmd run dev`，工作目录为 `runtime/`
-- 前端：`npm.cmd run dev -- --host 127.0.0.1 --port 5178`
-
-测试环境默认设置 `CHART_AGENT_LLM_MODE=off`，确保自动化测试走确定性规则链路，不依赖外部 LLM 服务。当前配置优先使用本机 Chrome；如果其他机器没有安装 Chrome，需要先安装 Playwright 浏览器或调整 `playwright.config.ts` 的浏览器配置。
+测试环境默认设置 `CHART_AGENT_LLM_MODE=off`，避免外部 LLM 服务影响稳定性。
