@@ -69,6 +69,8 @@ http://127.0.0.1:5184
 
 CopilotKit 官方 Runtime SDK PoC 的合并前审查见 [docs/runtime-poc-merge-review.md](docs/runtime-poc-merge-review.md)。
 
+Runtime PoC 合并回主线前的操作清单见 [docs/main-merge-checklist.md](docs/main-merge-checklist.md)。
+
 ## 环境变量
 
 后端本地配置放在 `backend/.env`，该文件已被 `.gitignore` 忽略。
