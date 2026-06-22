@@ -28,6 +28,8 @@ npm.cmd run dev
 http://127.0.0.1:8014/health
 ```
 
+`/health` 会同时检查 Runtime 自身和 FastAPI `/health` 是否可达。FastAPI 不可达时，Runtime 返回 `503` 和 `degraded` 状态。
+
 ## 测试
 
 Runtime 契约测试使用 Node test runner，通过 mock FastAPI 响应验证 CopilotKit/AG-UI 事件输出：

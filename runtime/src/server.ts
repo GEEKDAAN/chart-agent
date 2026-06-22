@@ -3,6 +3,7 @@ import { CopilotRuntime } from "@copilotkit/runtime/v2";
 import { createCopilotExpressHandler } from "@copilotkit/runtime/v2/express";
 
 import { ChartAgent } from "./chart-agent.js";
+import { runtimeHealthStatus } from "./health.js";
 
 const port = Number(process.env.PORT ?? 8004);
 const backendUrl = normalizeUrl(process.env.CHART_AGENT_BACKEND_URL, "http://127.0.0.1:8000");
@@ -15,8 +16,9 @@ const runtime = new CopilotRuntime({
 
 const app = express();
 
-app.get("/health", (_request, response) => {
-  response.json({ status: "ok", runtime: "copilotkit-official-sdk-poc", backendUrl });
+app.get("/health", async (_request, response) => {
+  const health = await runtimeHealthStatus(backendUrl);
+  response.status(health.status === "ok" ? 200 : 503).json(health);
 });
 
 app.use(
