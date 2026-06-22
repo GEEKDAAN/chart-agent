@@ -1,12 +1,13 @@
 {
   "name": "chart-agent-runtime-poc",
-  "version": "0.11.4",
+  "version": "0.11.5",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc -p tsconfig.json",
     "test": "tsx --test tests/**/*.test.ts",
+    "check:text": "powershell -ExecutionPolicy Bypass -File ../scripts/check-text-encoding.ps1",
     "start": "node dist/server.js"
   },
   "dependencies": {

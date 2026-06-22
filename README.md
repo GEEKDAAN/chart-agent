@@ -122,6 +122,13 @@ cd runtime
 npm.cmd run test
 ```
 
+中文文案编码检查用于防止源码、测试和文档中再次出现乱码：
+
+```powershell
+cd runtime
+npm.cmd run check:text
+```
+
 ## 更新日志
 
 项目变更记录在 [CHANGELOG.md](CHANGELOG.md)。新增版本记录时请遵循其中定义的中文模块分组格式。
