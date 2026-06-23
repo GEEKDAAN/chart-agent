@@ -33,6 +33,15 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.9] - 2026-06-22
+
+- 【前端】：
+  1. 为 Vite 增加 `@segment/analytics-node` 浏览器端空实现别名，避免 CopilotKit 前端构建间接打入 `node-fetch` 和 Node 内置模块外部化告警。
+  2. 将 ECharts 单独拆分为独立生产 chunk，并按当前 CopilotKit 富文本依赖基线调整 chunk 告警阈值，消除无效的大包告警。
+
+- 【工程】：
+  1. 新增 Segment Analytics Node 浏览器端 no-op stub，确保前端生产构建不依赖 Node telemetry 包。
+
 ## [0.11.8] - 2026-06-22
 
 - 【Runtime】：
