@@ -96,11 +96,41 @@ test("CopilotKit sidebar can generate and update a chart with streamed structure
   expect(badResponses).toEqual([]);
 });
 
+test("CopilotKit separates new chart requests from current chart questions", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByText("CopilotKit 已启用")).toBeVisible();
+  await expect(page.locator("textarea")).toBeVisible();
+
+  const trendResult = await sendPrompt(page, "最近30天的销售趋势");
+  const trendAction = toolResultByName(trendResult.events, "chartAgentAction")?.action;
+  expect(trendAction?.type).toBe("create_chart");
+  expect(trendAction?.chart?.chartType).toBe("line");
+  expect(trendAction?.chart?.encoding?.x).toBe("date");
+
+  const channelResult = await sendPrompt(page, "给我展示近30天各渠道的销售额");
+  const channelAction = toolResultByName(channelResult.events, "chartAgentAction")?.action;
+  expect(channelAction?.type).toBe("create_chart");
+  expect(channelAction?.chart?.chartType).toBe("bar");
+  expect(channelAction?.chart?.encoding?.x).toBe("channel");
+  expect(channelAction?.chart?.encoding?.y).toBe("sales");
+
+  const progressCountBeforeQuestion = await page.locator(".chat-progress").count();
+  const questionResult = await sendPrompt(page, "有哪些渠道？", { expectProgress: false });
+  expect(toolResultByName(questionResult.events, "chartAgentAction")).toBeUndefined();
+  await expect(page.locator(".chat-progress")).toHaveCount(progressCountBeforeQuestion);
+  await expect(page.getByText(/抖音.*小红书.*微信.*天猫/)).toBeVisible();
+});
+
+type SendPromptResult = {
+  content: string;
+  events: Record<string, any>[];
+};
+
 async function sendPrompt(
   page: import("@playwright/test").Page,
   prompt: string,
   options: { expectProgress?: boolean } = {},
-) {
+): Promise<SendPromptResult> {
   const expectProgress = options.expectProgress ?? true;
   const progressCount = await page.locator(".chat-progress").count();
   const responsePromise = page.waitForResponse((response) => {
@@ -139,6 +169,8 @@ async function sendPrompt(
     expect(toolStartNames).not.toContain("chartAgentAction");
     await expect(page.locator(".chat-progress")).toHaveCount(progressCount);
   }
+
+  return { content, events };
 }
 
 function readSseEvents(content: string): Record<string, any>[] {
@@ -160,4 +192,20 @@ function readSseEvents(content: string): Record<string, any>[] {
       }
     })
     .filter((value): value is Record<string, any> => Boolean(value && typeof value === "object"));
+}
+
+function toolResultByName(events: Record<string, any>[], toolName: string): Record<string, any> | undefined {
+  const toolCallIds = new Set(
+    events
+      .filter((event) => event.type === "TOOL_CALL_START" && event.toolCallName === toolName)
+      .map((event) => event.toolCallId),
+  );
+  const result = events.find((event) => event.type === "TOOL_CALL_RESULT" && toolCallIds.has(event.toolCallId));
+  if (!result || typeof result.content !== "string") return undefined;
+
+  try {
+    return JSON.parse(result.content);
+  } catch {
+    return undefined;
+  }
 }

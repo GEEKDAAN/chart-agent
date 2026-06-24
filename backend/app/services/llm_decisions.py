@@ -182,7 +182,7 @@ def _conflicts_with_deterministic_create(
 ) -> bool:
     if not fallback_decision or fallback_decision.toolName != "create_chart":
         return False
-    return decision.toolName == "answer_current_chart_question"
+    return decision.toolName != "create_chart"
 
 
 def _conflicts_with_deterministic_edit(
@@ -245,7 +245,7 @@ def _decision_system_prompt() -> str:
         "只能输出 JSON，不要输出解释文本。"
         "根据用户消息和 currentChart 选择一个后端工具。"
         "如果用户在询问当前图表字段、维度值、某个类别的指标值、最高最低或图表含义，选择 answer_current_chart_question。"
-        "如果用户要创建新图表，选择 create_chart。"
+        "如果用户要创建新图表，或提出与 currentChart 不同的新维度、新指标、时间范围组合，选择 create_chart。"
         "如果用户要改颜色、隐藏或恢复显示图表类目，选择 update_style。"
         "如果用户要增加指标或更新数据，选择 update_data。"
         "如果用户要换柱状图、折线图、饼图或表格，选择 change_chart_type。"
