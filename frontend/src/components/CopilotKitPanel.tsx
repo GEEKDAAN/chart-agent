@@ -76,6 +76,7 @@ export function CopilotKitPanel({ chart, onApplyAction, onApplyError }: CopilotK
     <CopilotKitProvider
       runtimeUrl={copilotRuntimeUrl}
       properties={runtimeContext}
+      showDevConsole={false}
       onError={({ error, code, context }) => {
         onApplyError(new Error(`CopilotKit 请求失败：${code} ${error.message} ${JSON.stringify(context)}`));
       }}

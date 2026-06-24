@@ -25,6 +25,8 @@ from app.services.llm_decisions import (
 )
 from app.services.data_requirements import parse_data_requirements
 from app.services.metrics import get_metric_catalog, query_metrics, validate_data_access
+from app.services.style_updates import color_label, resolve_style_updates
+from app.services.visibility_updates import VisibilityUpdate, resolve_visibility_update
 
 QueryMetrics = Callable[[list[str], list[str], dict[str, Any] | None, dict[str, str] | None, int], ChartData]
 LLMAction = Callable[[ChartAgentState], ChartAgentAction | None]
@@ -174,6 +176,12 @@ def _make_generate_action_node(llm_action_fn: LLMAction):
         if state.get("intent") == "explain_chart" and state.get("current_chart"):
             return {**state, "chart_action": _explain_chart_action(state)}
 
+        if state.get("intent") == "update_style":
+            try:
+                return {**state, "chart_action": _update_style_action(state)}
+            except ValueError as error:
+                return {**state, "chart_action": _error_action("validation_error", str(error))}
+
         try:
             llm_action = llm_action_fn(state)
         except Exception:
@@ -275,20 +283,43 @@ def _create_chart_action(state: ChartAgentState) -> ChartAgentAction:
 
 def _update_style_action(state: ChartAgentState) -> ChartAgentAction:
     current = _require_current_chart(state)
-    color = "#ef4444"
-    if "蓝色" in state["user_message"]:
-        color = "#2563eb"
-    if "绿色" in state["user_message"]:
-        color = "#16a34a"
     colors = dict(current.style.colors or {})
-    target = _resolve_style_target(state["user_message"], current)
-    colors[target] = color
+    hidden_values = dict(current.style.hiddenValues or {})
+    updates: dict[str, str] = {}
+    visibility_update = resolve_visibility_update(state, current)
+
+    try:
+        updates = resolve_style_updates(state, current)
+    except ValueError:
+        if not visibility_update:
+            raise
+
+    colors.update(updates)
+    if visibility_update:
+        hidden_values = visibility_update.hidden_values
+
+    change_parts = []
+    if updates:
+        change_parts.append("，".join(f"{target} 调整为{color_label(color)}" for target, color in updates.items()))
+    if visibility_update:
+        change_parts.append(_visibility_change_text(visibility_update))
+
+    if not change_parts:
+        raise ValueError("未识别到要修改的图表样式。")
+
     return ChartAgentAction(
         type="update_chart",
         chartId=current.id,
-        patch=ChartPatch(style=ChartStyle(colors=colors)),
-        message=f"已将 {target} 调整为指定颜色。",
+        patch=ChartPatch(style=ChartStyle(colors=colors, hiddenValues=hidden_values)),
+        message=f"已将 {'；'.join(change_parts)}。",
     )
+
+
+def _visibility_change_text(update: VisibilityUpdate) -> str:
+    target_text = "、".join(update.targets)
+    if update.action == "hide":
+        return f"{update.dimension_label}「{target_text}」隐藏"
+    return f"{update.dimension_label}「{target_text}」恢复显示"
 
 
 def _update_data_action(state: ChartAgentState) -> ChartAgentAction:
@@ -344,19 +375,6 @@ def _require_current_chart(state: ChartAgentState) -> ChartSpec:
     if not current:
         raise ValueError("当前没有可修改的图表，请先创建一个图表。")
     return current
-
-
-def _resolve_style_target(message: str, chart: ChartSpec) -> str:
-    for row in chart.data.rows:
-        for value in row.values():
-            if isinstance(value, str) and value in message:
-                return value
-    first_dimension = chart.encoding.x or chart.encoding.category
-    if first_dimension and chart.data.rows:
-        value = chart.data.rows[0].get(first_dimension)
-        if isinstance(value, str):
-            return value
-    return "default"
 
 
 def _resolve_chart_type(message: str) -> str:

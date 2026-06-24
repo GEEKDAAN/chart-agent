@@ -37,6 +37,10 @@ export function validateChartSpec(chart: ChartSpec): string[] {
   for (const key of chart.style.visibleColumns ?? []) {
     if (!columnKeys.has(key)) errors.push(`visibleColumns 引用了不存在的字段：${key}`);
   }
+
+  for (const key of Object.keys(chart.style.hiddenValues ?? {})) {
+    if (!columnKeys.has(key)) errors.push(`hiddenValues 引用了不存在的字段：${key}`);
+  }
   return errors;
 }
 
@@ -46,8 +50,8 @@ export function mergeChartPatch(current: ChartSpec, patch: ChartPatch): ChartSpe
     title: patch.title ?? current.title,
     chartType: patch.chartType ?? current.chartType,
     data: patch.data ?? current.data,
-    encoding: patch.encoding ? { ...current.encoding, ...patch.encoding } : current.encoding,
-    style: patch.style ? { ...current.style, ...patch.style } : current.style
+    encoding: patch.encoding ? { ...current.encoding, ...withoutNullish(patch.encoding) } : current.encoding,
+    style: patch.style ? { ...current.style, ...withoutNullish(patch.style) } : current.style
   };
 }
 
@@ -75,4 +79,8 @@ function assertValid(chart: ChartSpec): void {
   if (errors.length) {
     throw new Error(errors.join("\n"));
   }
+}
+
+function withoutNullish<T extends Record<string, unknown>>(value: T): Partial<T> {
+  return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== null && entry !== undefined)) as Partial<T>;
 }

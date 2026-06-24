@@ -136,6 +136,79 @@ def test_llm_failure_falls_back_to_deterministic_action():
     assert final_state["chart_action"].patch.style.colors == {"抖音": "#ef4444"}
 
 
+def test_update_style_uses_controlled_tool_instead_of_llm_action():
+    chart = _create_chart(build_chart_agent_graph())
+
+    def wrong_llm_action(state):
+        return ChartAgentAction(
+            type="update_chart",
+            chartId=chart.id,
+            patch={"style": {"colors": {"微信": "#16a34a"}}},
+            message="LLM 错误地把微信改成绿色。",
+        )
+
+    graph = build_chart_agent_graph(llm_action_fn=wrong_llm_action)
+    final_state = graph.invoke(_base_state("微信改成红色，天猫变成绿色", current_chart=chart))
+
+    assert final_state["intent"] == "update_style"
+    assert final_state["chart_action"].patch.style.colors == {"微信": "#ef4444", "天猫": "#16a34a"}
+
+
+def test_update_style_exclusion_uses_remaining_categories():
+    chart = _create_chart(build_chart_agent_graph())
+    graph = build_chart_agent_graph()
+
+    final_state = graph.invoke(_base_state("除抖音外，其他改成绿色", current_chart=chart))
+
+    assert final_state["intent"] == "update_style"
+    assert final_state["chart_action"].patch.style.colors == {
+        "小红书": "#16a34a",
+        "微信": "#16a34a",
+        "天猫": "#16a34a",
+    }
+
+
+def test_update_style_all_categories_does_not_default_to_first_category():
+    calls = {"query": 0}
+    chart = _create_chart(build_chart_agent_graph())
+
+    def query_metrics_spy(metrics, dimensions, filters, time_range, limit):
+        calls["query"] += 1
+        raise AssertionError("style updates must not query metrics")
+
+    graph = build_chart_agent_graph(query_metrics_fn=query_metrics_spy)
+    final_state = graph.invoke(_base_state("全部变成蓝色", current_chart=chart))
+
+    assert calls["query"] == 0
+    assert final_state["intent"] == "update_style"
+    assert final_state["chart_action"].patch.style.colors == {
+        "抖音": "#2563eb",
+        "小红书": "#2563eb",
+        "微信": "#2563eb",
+        "天猫": "#2563eb",
+    }
+
+
+def test_hide_category_does_not_query_metrics():
+    calls = {"query": 0, "llm": 0}
+    chart = _create_chart(build_chart_agent_graph())
+
+    def query_metrics_spy(metrics, dimensions, filters, time_range, limit):
+        calls["query"] += 1
+        raise AssertionError("visibility updates must not query metrics")
+
+    def llm_action_spy(state):
+        calls["llm"] += 1
+        raise AssertionError("visibility updates must not call LLM action generation")
+
+    graph = build_chart_agent_graph(query_metrics_fn=query_metrics_spy, llm_action_fn=llm_action_spy)
+    final_state = graph.invoke(_base_state("不要显示天猫", current_chart=chart))
+
+    assert calls == {"query": 0, "llm": 0}
+    assert final_state["intent"] == "update_style"
+    assert final_state["chart_action"].patch.style.hiddenValues == {"channel": ["天猫"]}
+
+
 def test_create_chart_parses_order_metric_and_channel_dimension():
     captured = {}
 

@@ -30,6 +30,7 @@ export type ChartEncoding = {
 export type ChartStyle = {
   visibleColumns?: string[];
   colors?: Record<string, string>;
+  hiddenValues?: Record<string, string[]>;
   showLegend?: boolean;
   showTooltip?: boolean;
   stacked?: boolean;

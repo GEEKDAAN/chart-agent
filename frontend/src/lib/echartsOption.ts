@@ -10,7 +10,7 @@ export function toEChartsOption(chart: ChartSpec): EChartsOption {
   if (chart.chartType === "pie") {
     const category = chart.encoding.category;
     const value = chart.encoding.value;
-    const rows = chart.data.rows;
+    const rows = visibleRows(chart);
     return {
       title: { text: chart.title, left: "center" },
       tooltip: { show: chart.style.showTooltip ?? true, trigger: "item" },
@@ -31,7 +31,7 @@ export function toEChartsOption(chart: ChartSpec): EChartsOption {
 
   const x = chart.encoding.x;
   const y = chart.encoding.y;
-  const rows = chart.data.rows;
+  const rows = visibleRows(chart);
   const categories = rows.map((row) => String(row[x ?? ""]));
 
   return {
@@ -57,4 +57,14 @@ export function toEChartsOption(chart: ChartSpec): EChartsOption {
 function colorFor(chart: ChartSpec, key: string): { color?: string } | undefined {
   const color = chart.style.colors?.[key] ?? chart.style.colors?.default;
   return color ? { color } : undefined;
+}
+
+export function visibleRows(chart: ChartSpec): Record<string, unknown>[] {
+  const hiddenValues = chart.style.hiddenValues ?? {};
+  const hiddenEntries = Object.entries(hiddenValues).filter(([, values]) => Array.isArray(values) && values.length > 0);
+  if (!hiddenEntries.length) return chart.data.rows;
+
+  return chart.data.rows.filter(
+    (row) => !hiddenEntries.some(([key, values]) => values.map(String).includes(String(row[key])))
+  );
 }

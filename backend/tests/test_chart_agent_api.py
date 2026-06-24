@@ -32,6 +32,102 @@ def test_update_style_returns_patch_without_data_query():
     assert body["action"]["patch"]["data"] is None
 
 
+def test_update_style_handles_multiple_targets_and_colors():
+    chart = _create_chart()
+
+    response = client.post("/chart-agent/chat", json=_payload("微信改成红色，天猫变成绿色", chart))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "update_style"
+    assert body["action"]["type"] == "update_chart"
+    assert body["action"]["patch"]["style"]["colors"] == {"微信": "#ef4444", "天猫": "#16a34a"}
+
+
+def test_update_style_yellow_is_not_treated_as_metric_question():
+    chart = _create_chart()
+
+    response = client.post("/chart-agent/chat", json=_payload("天猫变成黄色", chart))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "update_style"
+    assert body["action"]["type"] == "update_chart"
+    assert body["action"]["patch"]["style"]["colors"] == {"天猫": "#facc15"}
+    assert "186,000" not in body["action"]["message"]
+
+
+def test_update_style_preserves_existing_colors_on_follow_up():
+    chart = _create_chart()
+    chart["style"]["colors"] = {"微信": "#ef4444"}
+
+    response = client.post("/chart-agent/chat", json=_payload("天猫变成黄色", chart))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "update_style"
+    assert body["action"]["patch"]["style"]["colors"] == {"微信": "#ef4444", "天猫": "#facc15"}
+
+
+def test_update_style_handles_excluded_target_for_remaining_categories():
+    chart = _create_chart()
+
+    response = client.post("/chart-agent/chat", json=_payload("除抖音外，其他改成绿色", chart))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "update_style"
+    assert body["action"]["type"] == "update_chart"
+    assert body["action"]["patch"]["style"]["colors"] == {
+        "小红书": "#16a34a",
+        "微信": "#16a34a",
+        "天猫": "#16a34a",
+    }
+    assert "抖音" not in body["action"]["patch"]["style"]["colors"]
+
+
+def test_update_style_handles_all_categories():
+    chart = _create_chart()
+
+    response = client.post("/chart-agent/chat", json=_payload("全部变成蓝色", chart))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "update_style"
+    assert body["action"]["type"] == "update_chart"
+    assert body["action"]["patch"]["style"]["colors"] == {
+        "抖音": "#2563eb",
+        "小红书": "#2563eb",
+        "微信": "#2563eb",
+        "天猫": "#2563eb",
+    }
+
+
+def test_hide_chart_category_updates_hidden_values():
+    chart = _create_chart()
+
+    response = client.post("/chart-agent/chat", json=_payload("不要显示天猫", chart))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "update_style"
+    assert body["action"]["type"] == "update_chart"
+    assert body["action"]["patch"]["style"]["hiddenValues"] == {"channel": ["天猫"]}
+    assert "186,000" not in body["action"]["message"]
+
+
+def test_show_chart_category_removes_hidden_value():
+    chart = _create_chart()
+    chart["style"]["hiddenValues"] = {"channel": ["天猫"]}
+
+    response = client.post("/chart-agent/chat", json=_payload("恢复显示天猫", chart))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "update_style"
+    assert body["action"]["patch"]["style"]["hiddenValues"] == {}
+
+
 def test_update_data_adds_profit_rate_column():
     chart = _create_chart()
 
@@ -160,8 +256,22 @@ def test_current_chart_metric_lookup_uses_existing_chart_data():
     assert "168,000" in body["action"]["message"]
 
 
-def _create_chart() -> dict:
-    response = client.post("/chart-agent/chat", json=_payload("看最近30天各渠道销售额"))
+def test_new_channel_chart_request_replaces_current_trend_chart():
+    trend_chart = _create_chart("看近30天销售趋势")
+
+    response = client.post("/chart-agent/chat", json=_payload("给我展示近30天各渠道的销售额", trend_chart))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["intent"] == "create_chart"
+    assert body["action"]["type"] == "create_chart"
+    assert body["action"]["chart"]["encoding"]["x"] == "channel"
+    assert body["action"]["chart"]["encoding"]["y"] == "sales"
+    assert body["action"]["chart"]["chartType"] == "bar"
+
+
+def _create_chart(message: str = "看最近30天各渠道销售额") -> dict:
+    response = client.post("/chart-agent/chat", json=_payload(message))
     return response.json()["action"]["chart"]
 
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts";
 
-import { toEChartsOption } from "../lib/echartsOption";
+import { toEChartsOption, visibleRows } from "../lib/echartsOption";
 import type { ChartSpec } from "../types/chart";
 
 type ChartPanelProps = {
@@ -42,7 +42,7 @@ export function ChartPanel({ chart }: ChartPanelProps) {
             </tr>
           </thead>
           <tbody>
-            {chart.data.rows.map((row, rowIndex) => (
+            {visibleRows(chart).map((row, rowIndex) => (
               <tr key={rowIndex}>
                 {columns.map((column) => (
                   <td key={column.key}>{formatCell(row[column.key])}</td>

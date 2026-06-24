@@ -63,6 +63,7 @@ class ColumnStyle(BaseModel):
 class ChartStyle(BaseModel):
     visibleColumns: list[str] | None = None
     colors: dict[str, str] | None = None
+    hiddenValues: dict[str, list[str]] | None = None
     showLegend: bool = True
     showTooltip: bool = True
     stacked: bool = False
@@ -96,6 +97,10 @@ class ChartSpec(BaseModel):
             missing_visible = [key for key in self.style.visibleColumns if key not in column_keys]
             if missing_visible:
                 raise ValueError(f"visibleColumns references missing columns: {', '.join(missing_visible)}")
+        if self.style.hiddenValues:
+            missing_hidden = [key for key in self.style.hiddenValues if key not in column_keys]
+            if missing_hidden:
+                raise ValueError(f"hiddenValues references missing columns: {', '.join(missing_hidden)}")
 
         if self.chartType in {"bar", "line"} and not (self.encoding.x and self.encoding.y):
             raise ValueError("bar and line charts require encoding.x and encoding.y")

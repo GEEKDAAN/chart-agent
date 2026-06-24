@@ -13,6 +13,12 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@segment/analytics-node": fileURLToPath(
           new URL("./src/lib/segmentAnalyticsNodeStub.ts", import.meta.url)
+        ),
+        "katex/dist/katex.min.css": fileURLToPath(
+          new URL("./src/lib/emptyStyleModule.ts", import.meta.url)
+        ),
+        streamdown: fileURLToPath(
+          new URL("./src/lib/streamdownPlainTextStub.tsx", import.meta.url)
         )
       }
     },

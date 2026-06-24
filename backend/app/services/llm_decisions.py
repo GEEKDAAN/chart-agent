@@ -4,6 +4,7 @@ from typing import Any
 from app.agents.chart_agent_state import ChartAgentState
 from app.core.config import get_settings
 from app.schemas.chart import ChartAgentDecision, ChartSpec, Intent
+from app.services.visibility_updates import looks_like_visibility_update
 
 MIN_LLM_CONFIDENCE = 0.6
 
@@ -28,12 +29,17 @@ def fallback_chart_agent_decision(state: ChartAgentState) -> ChartAgentDecision:
     if any(keyword in normalized for keyword in ["天气", "新闻", "写代码", "讲笑话", "翻译"]):
         return _decision("out_of_scope", "out_of_scope", "fallback", "用户请求超出图表 Agent 范围。")
 
-    if any(keyword in normalized for keyword in ["红色", "颜色", "蓝色", "绿色"]):
+    if _looks_like_style_update(normalized):
         return _decision("update_style", "update_style", "fallback", "用户在修改图表样式。")
+    if current_chart and looks_like_visibility_update(normalized, current_chart):
+        return _decision("update_style", "update_style", "fallback", "用户在修改图表显示范围。")
     if any(keyword in normalized for keyword in ["加一列", "新增指标", "加上", "增加指标"]):
         return _decision("update_data", "update_data", "fallback", "用户在更新图表数据指标。")
     if any(keyword in normalized for keyword in ["折线", "柱状", "饼图", "表格", "换成"]):
         return _decision("change_chart_type", "change_chart_type", "fallback", "用户在切换图表类型。")
+
+    if current_chart and _looks_like_new_chart_request(normalized, current_chart):
+        return _decision("create_chart", "create_chart", "fallback", "用户提出了新的图表维度或指标需求。")
 
     if current_chart and _looks_like_current_chart_question(normalized, current_chart):
         return _decision(
@@ -152,6 +158,10 @@ def _is_usable_decision(
         return False
     if _conflicts_with_current_chart_question(decision, fallback_decision):
         return False
+    if _conflicts_with_deterministic_create(decision, fallback_decision):
+        return False
+    if _conflicts_with_deterministic_edit(decision, fallback_decision):
+        return False
     if decision.toolName in {"update_style", "update_data", "change_chart_type", "answer_current_chart_question"}:
         return bool(state.get("current_chart")) or decision.toolName == "answer_current_chart_question"
     return True
@@ -164,6 +174,24 @@ def _conflicts_with_current_chart_question(
     if not fallback_decision or fallback_decision.toolName != "answer_current_chart_question":
         return False
     return decision.toolName != "answer_current_chart_question"
+
+
+def _conflicts_with_deterministic_create(
+    decision: ChartAgentDecision,
+    fallback_decision: ChartAgentDecision | None,
+) -> bool:
+    if not fallback_decision or fallback_decision.toolName != "create_chart":
+        return False
+    return decision.toolName == "answer_current_chart_question"
+
+
+def _conflicts_with_deterministic_edit(
+    decision: ChartAgentDecision,
+    fallback_decision: ChartAgentDecision | None,
+) -> bool:
+    if not fallback_decision or fallback_decision.toolName not in {"update_style", "update_data", "change_chart_type"}:
+        return False
+    return decision.toolName != fallback_decision.toolName
 
 
 def _decision_intent_matches_tool(decision: ChartAgentDecision) -> bool:
@@ -192,6 +220,25 @@ def _decision(intent: Intent, tool_name: str, source: str, reason: str) -> Chart
     )
 
 
+def _looks_like_style_update(message: str) -> bool:
+    color_terms = [
+        "红色",
+        "蓝色",
+        "绿色",
+        "黄色",
+        "紫色",
+        "橙色",
+        "黑色",
+        "白色",
+        "灰色",
+        "粉色",
+    ]
+    style_verbs = ["改成", "改为", "变成", "变为", "设为", "设置为", "调成", "调整为", "换成"]
+    if "颜色" in message:
+        return True
+    return any(color in message for color in color_terms) and any(verb in message for verb in style_verbs)
+
+
 def _decision_system_prompt() -> str:
     return (
         "你是 chart-agent 的工具决策节点。"
@@ -199,7 +246,7 @@ def _decision_system_prompt() -> str:
         "根据用户消息和 currentChart 选择一个后端工具。"
         "如果用户在询问当前图表字段、维度值、某个类别的指标值、最高最低或图表含义，选择 answer_current_chart_question。"
         "如果用户要创建新图表，选择 create_chart。"
-        "如果用户要改颜色，选择 update_style。"
+        "如果用户要改颜色、隐藏或恢复显示图表类目，选择 update_style。"
         "如果用户要增加指标或更新数据，选择 update_data。"
         "如果用户要换柱状图、折线图、饼图或表格，选择 change_chart_type。"
         "如果无法确定，选择 clarify_chart_request。"
@@ -280,6 +327,26 @@ def _looks_like_current_chart_question(message: str, chart: ChartSpec) -> bool:
     return _matches_chart_schema(message, chart) and not _looks_like_create_request(message)
 
 
+def _looks_like_new_chart_request(message: str, chart: ChartSpec) -> bool:
+    if _contains_question_term(message):
+        return False
+
+    requested_dimension = _requested_dimension_key(message)
+    requested_metric = _requested_metric_key(message)
+    has_chart_request_verb = any(keyword in message for keyword in ["看", "展示", "显示", "生成", "创建", "新建", "统计"])
+    has_time_range = "最近" in message or "近" in message
+    current_dimension = chart.encoding.x or chart.encoding.category
+    current_metric = chart.encoding.y or chart.encoding.value
+
+    if requested_dimension and requested_dimension != current_dimension:
+        return True
+    if requested_dimension and requested_metric and has_chart_request_verb:
+        return True
+    if requested_metric and requested_metric != current_metric and has_chart_request_verb:
+        return True
+    return bool(requested_dimension and requested_metric and has_time_range)
+
+
 def _contains_question_term(message: str) -> bool:
     return any(
         term in message
@@ -320,7 +387,31 @@ def _matches_chart_schema(message: str, chart: ChartSpec) -> bool:
 
 
 def _looks_like_create_request(message: str) -> bool:
-    return any(keyword in message for keyword in ["生成", "创建", "新建", "重新生成", "统计", "趋势"])
+    return any(keyword in message for keyword in ["生成", "创建", "新建", "重新生成", "统计", "趋势", "展示", "显示"])
+
+
+def _requested_dimension_key(message: str) -> str | None:
+    dimension_keywords = {
+        "region": ["各地区", "按地区", "分地区", "地区分布"],
+        "channel": ["各渠道", "按渠道", "分渠道", "渠道分布"],
+        "date": ["趋势", "日期", "每天", "每日", "按天", "近30天", "最近30天", "近7天", "最近7天"],
+    }
+    for key, keywords in dimension_keywords.items():
+        if any(keyword in message for keyword in keywords):
+            return key
+    return None
+
+
+def _requested_metric_key(message: str) -> str | None:
+    metric_keywords = {
+        "sales": ["销售额", "销售", "成交额", "gmv"],
+        "orders": ["订单数", "订单", "单量"],
+        "profit_rate": ["利润率", "毛利率"],
+    }
+    for key, keywords in metric_keywords.items():
+        if any(keyword in message for keyword in keywords):
+            return key
+    return None
 
 
 def _asks_for_values(message: str) -> bool:
