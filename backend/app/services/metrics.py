@@ -3,6 +3,15 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any, Protocol
 
+from app.domain.column_types import (
+    COLUMN_TYPE_CURRENCY,
+    COLUMN_TYPE_DATE,
+    COLUMN_TYPE_NUMBER,
+    COLUMN_TYPE_PERCENT,
+    COLUMN_TYPE_STRING,
+)
+from app.domain.dimensions import DIMENSION_CHANNEL, DIMENSION_DATE, DIMENSION_REGION
+from app.domain.metrics import METRIC_ORDERS, METRIC_PROFIT_RATE, METRIC_SALES
 from app.schemas.chart import ChartColumn, ChartData, ColumnType, UserContext
 
 
@@ -51,29 +60,68 @@ class MetricDataSource(Protocol):
 
 DEFAULT_METRIC_CATALOG = MetricCatalog(
     metrics=(
-        CatalogField(key="sales", label="销售额", type="currency"),
-        CatalogField(key="orders", label="订单数", type="number"),
-        CatalogField(key="profit_rate", label="利润率", type="percent"),
+        CatalogField(key=METRIC_SALES, label="销售额", type=COLUMN_TYPE_CURRENCY),
+        CatalogField(key=METRIC_ORDERS, label="订单数", type=COLUMN_TYPE_NUMBER),
+        CatalogField(key=METRIC_PROFIT_RATE, label="利润率", type=COLUMN_TYPE_PERCENT),
     ),
     dimensions=(
-        CatalogField(key="date", label="日期", type="date"),
-        CatalogField(key="region", label="地区", type="string"),
-        CatalogField(key="channel", label="渠道", type="string"),
+        CatalogField(key=DIMENSION_DATE, label="日期", type=COLUMN_TYPE_DATE),
+        CatalogField(key=DIMENSION_REGION, label="地区", type=COLUMN_TYPE_STRING),
+        CatalogField(key=DIMENSION_CHANNEL, label="渠道", type=COLUMN_TYPE_STRING),
     ),
 )
 
 
 CHANNEL_ROWS = [
-    {"channel": "抖音", "region": "华东", "sales": 168000, "orders": 1240, "profit_rate": 0.23},
-    {"channel": "小红书", "region": "华南", "sales": 132000, "orders": 980, "profit_rate": 0.26},
-    {"channel": "微信", "region": "华北", "sales": 98000, "orders": 760, "profit_rate": 0.19},
-    {"channel": "天猫", "region": "华东", "sales": 186000, "orders": 1410, "profit_rate": 0.21},
+    {
+        DIMENSION_CHANNEL: "抖音",
+        DIMENSION_REGION: "华东",
+        METRIC_SALES: 168000,
+        METRIC_ORDERS: 1240,
+        METRIC_PROFIT_RATE: 0.23,
+    },
+    {
+        DIMENSION_CHANNEL: "小红书",
+        DIMENSION_REGION: "华南",
+        METRIC_SALES: 132000,
+        METRIC_ORDERS: 980,
+        METRIC_PROFIT_RATE: 0.26,
+    },
+    {
+        DIMENSION_CHANNEL: "微信",
+        DIMENSION_REGION: "华北",
+        METRIC_SALES: 98000,
+        METRIC_ORDERS: 760,
+        METRIC_PROFIT_RATE: 0.19,
+    },
+    {
+        DIMENSION_CHANNEL: "天猫",
+        DIMENSION_REGION: "华东",
+        METRIC_SALES: 186000,
+        METRIC_ORDERS: 1410,
+        METRIC_PROFIT_RATE: 0.21,
+    },
 ]
 
 REGION_ROWS = [
-    {"region": "华东", "sales": 221000, "orders": 1660, "profit_rate": 0.24},
-    {"region": "华南", "sales": 177000, "orders": 1290, "profit_rate": 0.22},
-    {"region": "华北", "sales": 149000, "orders": 1040, "profit_rate": 0.18},
+    {
+        DIMENSION_REGION: "华东",
+        METRIC_SALES: 221000,
+        METRIC_ORDERS: 1660,
+        METRIC_PROFIT_RATE: 0.24,
+    },
+    {
+        DIMENSION_REGION: "华南",
+        METRIC_SALES: 177000,
+        METRIC_ORDERS: 1290,
+        METRIC_PROFIT_RATE: 0.22,
+    },
+    {
+        DIMENSION_REGION: "华北",
+        METRIC_SALES: 149000,
+        METRIC_ORDERS: 1040,
+        METRIC_PROFIT_RATE: 0.18,
+    },
 ]
 
 
@@ -89,7 +137,7 @@ class MockMetricDataSource:
         time_range: dict[str, str] | None,
         limit: int,
     ) -> ChartData:
-        dimension = dimensions[0] if dimensions else "channel"
+        dimension = dimensions[0] if dimensions else DIMENSION_CHANNEL
         rows = self._rows_for_dimension(dimension, metrics, filters, time_range)
         selected_rows = [
             {key: row[key] for key in [dimension, *metrics] if key in row}
@@ -104,11 +152,11 @@ class MockMetricDataSource:
         filters: dict[str, Any],
         time_range: dict[str, str] | None,
     ) -> list[dict[str, Any]]:
-        if dimension == "date":
+        if dimension == DIMENSION_DATE:
             return [row for row in self._build_daily_rows(metrics, time_range) if _matches_filters(row, filters)]
-        if dimension == "region":
+        if dimension == DIMENSION_REGION:
             return [row for row in REGION_ROWS if _matches_filters(row, filters)]
-        if dimension == "channel":
+        if dimension == DIMENSION_CHANNEL:
             return [row for row in CHANNEL_ROWS if _matches_filters(row, filters)]
         raise ValueError("请求包含不支持的维度")
 
@@ -136,12 +184,12 @@ class MockMetricDataSource:
             current = current_start + timedelta(days=index)
             base_sales = 82000 + index * 9200
             row = {
-                "date": current.isoformat(),
-                "sales": base_sales,
-                "orders": 560 + index * 48,
-                "profit_rate": round(0.18 + index * 0.008, 3),
+                DIMENSION_DATE: current.isoformat(),
+                METRIC_SALES: base_sales,
+                METRIC_ORDERS: 560 + index * 48,
+                METRIC_PROFIT_RATE: round(0.18 + index * 0.008, 3),
             }
-            rows.append({key: value for key, value in row.items() if key == "date" or key in metrics})
+            rows.append({key: value for key, value in row.items() if key == DIMENSION_DATE or key in metrics})
         return rows
 
 

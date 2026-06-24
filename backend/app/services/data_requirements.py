@@ -3,23 +3,17 @@ from collections.abc import Iterable
 from datetime import date, timedelta
 
 from app.agents.chart_agent_state import DataRequirements
+from app.domain.dimensions import (
+    CHANNEL_VALUES,
+    DIMENSION_CHANNEL,
+    DIMENSION_DATE,
+    DIMENSION_KEYWORDS,
+    DIMENSION_REGION,
+    REGION_VALUES,
+)
+from app.domain.intents import INTENT_CREATE_CHART, INTENT_UPDATE_DATA
+from app.domain.metrics import METRIC_KEYWORDS, METRIC_SALES
 from app.schemas.chart import ChartSpec, Intent
-
-
-METRIC_KEYWORDS = {
-    "sales": ("销售额", "销售", "成交额", "GMV", "gmv"),
-    "orders": ("订单数", "订单", "单量"),
-    "profit_rate": ("利润率", "毛利率"),
-}
-
-DIMENSION_KEYWORDS = {
-    "date": ("趋势", "每天", "每日", "日期", "按天", "折线"),
-    "region": ("各地区", "按地区", "分地区", "地区分布"),
-    "channel": ("各渠道", "按渠道", "分渠道", "渠道分布"),
-}
-
-REGION_VALUES = ("华东", "华南", "华北")
-CHANNEL_VALUES = ("抖音", "小红书", "微信", "天猫")
 
 
 def parse_data_requirements(
@@ -28,8 +22,8 @@ def parse_data_requirements(
     current_chart: ChartSpec | None = None,
     today: date | None = None,
 ) -> DataRequirements:
-    if intent == "create_chart":
-        metrics = _resolve_metrics(message, default=["sales"])
+    if intent == INTENT_CREATE_CHART:
+        metrics = _resolve_metrics(message, default=[METRIC_SALES])
         dimensions = [_resolve_create_dimension(message)]
         return {
             "metrics": metrics,
@@ -38,12 +32,12 @@ def parse_data_requirements(
             "time_range": _resolve_time_range(message, today or date.today()),
         }
 
-    if intent == "update_data":
+    if intent == INTENT_UPDATE_DATA:
         if not current_chart:
             raise ValueError("当前没有可修改的图表，请先创建一个图表。")
         metrics = _merge_metrics(_current_metrics(current_chart), _resolve_metrics(message, default=[]))
         if not metrics:
-            metrics = ["sales"]
+            metrics = [METRIC_SALES]
         dimension = current_chart.encoding.x or current_chart.encoding.category or _resolve_create_dimension(message)
         return {
             "metrics": metrics,
@@ -61,27 +55,27 @@ def _resolve_metrics(message: str, default: list[str]) -> list[str]:
 
 
 def _resolve_create_dimension(message: str) -> str:
-    for key in ("region", "channel", "date"):
+    for key in (DIMENSION_REGION, DIMENSION_CHANNEL, DIMENSION_DATE):
         keywords = DIMENSION_KEYWORDS[key]
         if _contains_any(message, keywords):
             return key
     if _resolve_recent_days(message):
-        return "date"
+        return DIMENSION_DATE
     if any(value in message for value in REGION_VALUES):
-        return "channel"
+        return DIMENSION_CHANNEL
     if any(value in message for value in CHANNEL_VALUES):
-        return "date"
-    return "channel"
+        return DIMENSION_DATE
+    return DIMENSION_CHANNEL
 
 
 def _resolve_filters(message: str) -> dict[str, str]:
     filters: dict[str, str] = {}
     region = _first_match(message, REGION_VALUES)
     channel = _first_match(message, CHANNEL_VALUES)
-    if region and not _contains_any(message, DIMENSION_KEYWORDS["region"]):
-        filters["region"] = region
-    if channel and not _contains_any(message, DIMENSION_KEYWORDS["channel"]):
-        filters["channel"] = channel
+    if region and not _contains_any(message, DIMENSION_KEYWORDS[DIMENSION_REGION]):
+        filters[DIMENSION_REGION] = region
+    if channel and not _contains_any(message, DIMENSION_KEYWORDS[DIMENSION_CHANNEL]):
+        filters[DIMENSION_CHANNEL] = channel
     return filters
 
 

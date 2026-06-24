@@ -2,6 +2,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.domain.actions import ACTION_CREATE_CHART, ACTION_ERROR, ACTION_UPDATE_CHART
+from app.domain.chart_types import CHART_TYPE_PIE, XY_CHART_TYPES
+
 ChartType = Literal["bar", "line", "pie", "table"]
 ColumnType = Literal["string", "number", "date", "currency", "percent"]
 Intent = Literal[
@@ -102,9 +105,9 @@ class ChartSpec(BaseModel):
             if missing_hidden:
                 raise ValueError(f"hiddenValues references missing columns: {', '.join(missing_hidden)}")
 
-        if self.chartType in {"bar", "line"} and not (self.encoding.x and self.encoding.y):
+        if self.chartType in XY_CHART_TYPES and not (self.encoding.x and self.encoding.y):
             raise ValueError("bar and line charts require encoding.x and encoding.y")
-        if self.chartType == "pie" and not (self.encoding.category and self.encoding.value):
+        if self.chartType == CHART_TYPE_PIE and not (self.encoding.category and self.encoding.value):
             raise ValueError("pie charts require encoding.category and encoding.value")
         return self
 
@@ -144,11 +147,11 @@ class ChartAgentAction(BaseModel):
 
     @model_validator(mode="after")
     def validate_action_payload(self) -> "ChartAgentAction":
-        if self.type == "create_chart" and self.chart is None:
+        if self.type == ACTION_CREATE_CHART and self.chart is None:
             raise ValueError("create_chart requires chart")
-        if self.type == "update_chart" and (not self.chartId or self.patch is None):
+        if self.type == ACTION_UPDATE_CHART and (not self.chartId or self.patch is None):
             raise ValueError("update_chart requires chartId and patch")
-        if self.type == "error" and not self.code:
+        if self.type == ACTION_ERROR and not self.code:
             raise ValueError("error requires code")
         return self
 

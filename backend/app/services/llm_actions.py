@@ -3,6 +3,7 @@ from typing import Any
 
 from app.agents.chart_agent_state import ChartAgentState
 from app.core.config import get_settings
+from app.domain.actions import ACTION_CREATE_CHART, ACTION_ERROR, ACTION_UPDATE_CHART, ALLOWED_ACTION_TYPES
 from app.schemas.chart import ChartAgentAction
 
 
@@ -83,7 +84,7 @@ def _build_llm_context(state: ChartAgentState) -> dict[str, Any]:
         "currentChart": current_chart.model_dump(by_alias=True) if current_chart else None,
         "dataRequirements": state.get("data_requirements"),
         "queriedData": queried_data.model_dump(by_alias=True) if queried_data else None,
-        "allowedActionTypes": ["create_chart", "update_chart", "error"],
+        "allowedActionTypes": ALLOWED_ACTION_TYPES,
         "rules": [
             "create_chart 必须包含完整 chart。",
             "update_chart 必须包含 chartId 和受控 patch。",
@@ -99,7 +100,7 @@ def _chart_agent_action_schema() -> dict[str, Any]:
         "type": "object",
         "additionalProperties": False,
         "properties": {
-            "type": {"type": "string", "enum": ["create_chart", "update_chart", "error"]},
+            "type": {"type": "string", "enum": [ACTION_CREATE_CHART, ACTION_UPDATE_CHART, ACTION_ERROR]},
             "message": {"type": "string"},
             "chart": {"type": ["object", "null"]},
             "chartId": {"type": ["string", "null"]},

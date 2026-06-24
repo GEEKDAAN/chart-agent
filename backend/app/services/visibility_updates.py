@@ -2,6 +2,14 @@ from dataclasses import dataclass
 from typing import Literal
 
 from app.agents.chart_agent_state import ChartAgentState
+from app.domain.column_types import COLUMN_TYPE_STRING
+from app.domain.visibility import (
+    VISIBILITY_HIDE,
+    VISIBILITY_HIDE_TERMS,
+    VISIBILITY_SHOW,
+    VISIBILITY_SHOW_ALL_TERMS,
+    VISIBILITY_SHOW_TERMS,
+)
 from app.schemas.chart import ChartSpec
 
 VisibilityAction = Literal["hide", "show"]
@@ -27,7 +35,7 @@ def resolve_visibility_update(state: ChartAgentState, chart: ChartSpec) -> Visib
         return None
 
     targets = _targets_in_message(message, chart, dimension_key)
-    if not targets and action == "show" and any(keyword in message for keyword in ["全部", "所有"]):
+    if not targets and action == VISIBILITY_SHOW and any(keyword in message for keyword in VISIBILITY_SHOW_ALL_TERMS):
         targets = _hidden_values(chart, dimension_key)
     if not targets:
         return None
@@ -35,7 +43,7 @@ def resolve_visibility_update(state: ChartAgentState, chart: ChartSpec) -> Visib
     hidden_values = {key: list(values) for key, values in (chart.style.hiddenValues or {}).items()}
     current_values = hidden_values.get(dimension_key, [])
 
-    if action == "hide":
+    if action == VISIBILITY_HIDE:
         next_values = [*current_values]
         for target in targets:
             if target not in next_values:
@@ -65,12 +73,10 @@ def looks_like_visibility_update(message: str, chart: ChartSpec) -> bool:
 
 
 def _resolve_visibility_action(message: str) -> VisibilityAction | None:
-    hide_terms = ["不要显示", "不显示", "隐藏", "去掉", "移除", "删掉", "删除", "过滤掉", "排除"]
-    show_terms = ["恢复显示", "取消隐藏", "显示回来", "重新显示", "显示", "展示"]
-    if any(term in message for term in hide_terms):
-        return "hide"
-    if any(term in message for term in show_terms):
-        return "show"
+    if any(term in message for term in VISIBILITY_HIDE_TERMS):
+        return VISIBILITY_HIDE
+    if any(term in message for term in VISIBILITY_SHOW_TERMS):
+        return VISIBILITY_SHOW
     return None
 
 
@@ -80,7 +86,7 @@ def _resolve_dimension_key(chart: ChartSpec) -> str | None:
     if chart.encoding.category:
         return chart.encoding.category
     for column in chart.data.columns:
-        if column.type == "string":
+        if column.type == COLUMN_TYPE_STRING:
             return column.key
     return None
 

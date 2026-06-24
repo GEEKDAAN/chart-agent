@@ -33,6 +33,26 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.17] - 2026-06-24
+
+- 【后端】：
+  1. 将原 `app/services/llm_decisions.py` 拆分为 `app/services/decision/` 子模块，分别承载 fallback 决策、LLM 决策调用、决策校验、当前图表问答和图表 schema 匹配。
+  2. 保留 `app.services.llm_decisions` 作为兼容入口，现有图谱调用和测试 monkeypatch 路径不需要调整。
+  3. 本次拆分不改变意图识别、图表问答和 LLM guardrail 的业务行为，目标是降低后续维护成本。
+
+- 【工程】：
+  1. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.17`。
+
+## [0.11.16] - 2026-06-24
+
+- 【后端】：
+  1. 新增 `backend/app/domain/` 常量模块，集中管理 action、chart type、column type、intent/tool、metric、dimension、color 和 visibility 相关业务常量。
+  2. 将数据需求解析、LLM 决策、图表 action 生成、指标服务、样式修改和显示隐藏逻辑中的高频魔法值迁移为 domain 常量引用。
+  3. 保留对外 API 和 ChartSpec/ChartAgentAction 协议不变，本版本只做后端结构治理和可维护性增强。
+
+- 【工程】：
+  1. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.16`。
+
 ## [0.11.15] - 2026-06-24
 
 - 【文档】：

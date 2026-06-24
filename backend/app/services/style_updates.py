@@ -1,42 +1,6 @@
 from app.agents.chart_agent_state import ChartAgentState
+from app.domain.colors import COLOR_HEX_TO_LABEL, COLOR_NAME_TO_HEX
 from app.schemas.chart import ChartSpec
-
-COLOR_NAME_TO_HEX = {
-    "红色": "#ef4444",
-    "red": "#ef4444",
-    "蓝色": "#2563eb",
-    "blue": "#2563eb",
-    "绿色": "#16a34a",
-    "green": "#16a34a",
-    "黄色": "#facc15",
-    "yellow": "#facc15",
-    "紫色": "#9333ea",
-    "purple": "#9333ea",
-    "橙色": "#f97316",
-    "orange": "#f97316",
-    "黑色": "#111827",
-    "black": "#111827",
-    "白色": "#ffffff",
-    "white": "#ffffff",
-    "灰色": "#6b7280",
-    "gray": "#6b7280",
-    "grey": "#6b7280",
-    "粉色": "#ec4899",
-    "pink": "#ec4899",
-}
-
-COLOR_HEX_TO_LABEL = {
-    "#ef4444": "红色",
-    "#2563eb": "蓝色",
-    "#16a34a": "绿色",
-    "#facc15": "黄色",
-    "#9333ea": "紫色",
-    "#f97316": "橙色",
-    "#111827": "黑色",
-    "#ffffff": "白色",
-    "#6b7280": "灰色",
-    "#ec4899": "粉色",
-}
 
 
 def resolve_style_updates(state: ChartAgentState, chart: ChartSpec) -> dict[str, str]:

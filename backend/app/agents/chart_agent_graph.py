@@ -4,6 +4,29 @@ from typing import Any, Literal
 from langgraph.graph import END, StateGraph
 
 from app.agents.chart_agent_state import ChartAgentState, DataRequirements
+from app.domain.actions import ACTION_CREATE_CHART, ACTION_ERROR, ACTION_UPDATE_CHART
+from app.domain.chart_types import (
+    CHART_TYPE_BAR,
+    CHART_TYPE_LABELS,
+    CHART_TYPE_LINE,
+    CHART_TYPE_PIE,
+    CHART_TYPE_TABLE,
+)
+from app.domain.dimensions import DIMENSION_DATE, DIMENSION_LABELS
+from app.domain.intents import (
+    INTENT_CHANGE_CHART_TYPE,
+    INTENT_CREATE_CHART,
+    INTENT_EXPLAIN_CHART,
+    INTENT_HELP,
+    INTENT_OUT_OF_SCOPE,
+    INTENT_SMALLTALK,
+    INTENT_UNCLEAR_CHART_REQUEST,
+    INTENT_UNKNOWN,
+    INTENT_UPDATE_DATA,
+    INTENT_UPDATE_STYLE,
+)
+from app.domain.metrics import METRIC_LABELS
+from app.domain.visibility import VISIBILITY_HIDE
 from app.schemas.chart import (
     ChartAgentAction,
     ChartAgentDecision,
@@ -51,13 +74,13 @@ def run_chart_agent(request: ChartAgentRequest, initial_decision: ChartAgentDeci
         initial_state["decision"] = initial_decision
     final_state = graph.invoke(initial_state)
     action = final_state.get("chart_action") or ChartAgentAction(
-        type="error",
+        type=ACTION_ERROR,
         code="agent_no_action",
         message="Agent 未生成有效图表动作。",
     )
     return ChartAgentResponse(
         conversationId=request.conversation_id,
-        intent=final_state.get("intent", "unknown"),
+        intent=final_state.get("intent", INTENT_UNKNOWN),
         action=action,
     )
 
@@ -130,7 +153,7 @@ def classify_intent(message: str, current_chart: ChartSpec | None = None) -> Int
 
 
 def route_after_classification(state: ChartAgentState) -> Literal["plan_data", "generate_action"]:
-    return "plan_data" if state.get("intent") in {"create_chart", "update_data"} else "generate_action"
+    return "plan_data" if state.get("intent") in {INTENT_CREATE_CHART, INTENT_UPDATE_DATA} else "generate_action"
 
 
 def plan_data_node(state: ChartAgentState) -> ChartAgentState:
@@ -169,14 +192,14 @@ def _make_generate_action_node(llm_action_fn: LLMAction):
         if state.get("errors"):
             return {**state, "chart_action": _error_action("validation_error", state["errors"][0])}
 
-        conversational_action = _conversational_action(state.get("intent", "unknown"))
+        conversational_action = _conversational_action(state.get("intent", INTENT_UNKNOWN))
         if conversational_action:
             return {**state, "chart_action": conversational_action}
 
-        if state.get("intent") == "explain_chart" and state.get("current_chart"):
+        if state.get("intent") == INTENT_EXPLAIN_CHART and state.get("current_chart"):
             return {**state, "chart_action": _explain_chart_action(state)}
 
-        if state.get("intent") == "update_style":
+        if state.get("intent") == INTENT_UPDATE_STYLE:
             try:
                 return {**state, "chart_action": _update_style_action(state)}
             except ValueError as error:
@@ -189,17 +212,17 @@ def _make_generate_action_node(llm_action_fn: LLMAction):
         if llm_action:
             return {**state, "chart_action": llm_action}
 
-        intent = state.get("intent", "unknown")
+        intent = state.get("intent", INTENT_UNKNOWN)
         try:
-            if intent == "create_chart":
+            if intent == INTENT_CREATE_CHART:
                 action = _create_chart_action(state)
-            elif intent == "update_style":
+            elif intent == INTENT_UPDATE_STYLE:
                 action = _update_style_action(state)
-            elif intent == "update_data":
+            elif intent == INTENT_UPDATE_DATA:
                 action = _update_data_action(state)
-            elif intent == "change_chart_type":
+            elif intent == INTENT_CHANGE_CHART_TYPE:
                 action = _change_chart_type_action(state)
-            elif intent == "explain_chart":
+            elif intent == INTENT_EXPLAIN_CHART:
                 action = _explain_chart_action(state)
             else:
                 action = _error_action(
@@ -214,22 +237,22 @@ def _make_generate_action_node(llm_action_fn: LLMAction):
 
 
 def _conversational_action(intent: Intent) -> ChartAgentAction | None:
-    if intent == "smalltalk":
+    if intent == INTENT_SMALLTALK:
         return _error_action(
             "smalltalk",
             "你好，我是 chart-agent。你可以告诉我想看什么指标、按什么维度分析，或者让我修改当前图表。",
         )
-    if intent == "help":
+    if intent == INTENT_HELP:
         return _error_action(
             "help",
             "我可以生成图表、修改图表颜色、切换图表类型、增加指标列，并解释当前图表。比如：看最近30天各渠道销售额、把抖音改成红色、换成折线图。",
         )
-    if intent == "out_of_scope":
+    if intent == INTENT_OUT_OF_SCOPE:
         return _error_action(
             "out_of_scope",
             "我目前只处理图表生成、图表编辑和图表解释相关需求。请告诉我你想分析的指标、维度或要修改的图表内容。",
         )
-    if intent == "unclear_chart_request":
+    if intent == INTENT_UNCLEAR_CHART_REQUEST:
         return _error_action(
             "clarification_required",
             "我还不能确定你的图表需求。请明确指标、维度或修改目标，例如“看最近30天各渠道销售额”或“把抖音改成红色”。",
@@ -256,7 +279,7 @@ def respond_node(state: ChartAgentState) -> ChartAgentState:
 def _resolve_data_requirements(state: ChartAgentState) -> DataRequirements:
     return parse_data_requirements(
         message=state["user_message"],
-        intent=state.get("intent", "unknown"),
+        intent=state.get("intent", INTENT_UNKNOWN),
         current_chart=state.get("current_chart"),
     )
 
@@ -268,7 +291,7 @@ def _create_chart_action(state: ChartAgentState) -> ChartAgentAction:
         raise ValueError("创建图表缺少查询结果。")
     dimension = requirements["dimensions"][0]
     metric = requirements["metrics"][0]
-    chart_type = "line" if dimension == "date" else "bar"
+    chart_type = CHART_TYPE_LINE if dimension == DIMENSION_DATE else CHART_TYPE_BAR
     metric_label = _metric_label(metric)
     chart = ChartSpec(
         id=f"chart_demo_{metric}",
@@ -278,7 +301,7 @@ def _create_chart_action(state: ChartAgentState) -> ChartAgentAction:
         encoding=ChartEncoding(x=dimension, y=metric),
         style=ChartStyle(showLegend=False, showTooltip=True),
     )
-    return ChartAgentAction(type="create_chart", chart=chart, message=f"已生成{metric_label}图表。")
+    return ChartAgentAction(type=ACTION_CREATE_CHART, chart=chart, message=f"已生成{metric_label}图表。")
 
 
 def _update_style_action(state: ChartAgentState) -> ChartAgentAction:
@@ -308,7 +331,7 @@ def _update_style_action(state: ChartAgentState) -> ChartAgentAction:
         raise ValueError("未识别到要修改的图表样式。")
 
     return ChartAgentAction(
-        type="update_chart",
+        type=ACTION_UPDATE_CHART,
         chartId=current.id,
         patch=ChartPatch(style=ChartStyle(colors=colors, hiddenValues=hidden_values)),
         message=f"已将 {'；'.join(change_parts)}。",
@@ -317,7 +340,7 @@ def _update_style_action(state: ChartAgentState) -> ChartAgentAction:
 
 def _visibility_change_text(update: VisibilityUpdate) -> str:
     target_text = "、".join(update.targets)
-    if update.action == "hide":
+    if update.action == VISIBILITY_HIDE:
         return f"{update.dimension_label}「{target_text}」隐藏"
     return f"{update.dimension_label}「{target_text}」恢复显示"
 
@@ -329,7 +352,7 @@ def _update_data_action(state: ChartAgentState) -> ChartAgentAction:
         raise ValueError("更新数据缺少查询结果。")
     visible_columns = [column.key for column in data.columns]
     return ChartAgentAction(
-        type="update_chart",
+        type=ACTION_UPDATE_CHART,
         chartId=current.id,
         patch=ChartPatch(data=data, style=ChartStyle(visibleColumns=visible_columns)),
         message="已更新图表数据和指标列。",
@@ -339,16 +362,16 @@ def _update_data_action(state: ChartAgentState) -> ChartAgentAction:
 def _change_chart_type_action(state: ChartAgentState) -> ChartAgentAction:
     current = _require_current_chart(state)
     chart_type = _resolve_chart_type(state["user_message"])
-    if chart_type == "pie":
+    if chart_type == CHART_TYPE_PIE:
         patch = ChartPatch(
-            chartType="pie",
+            chartType=CHART_TYPE_PIE,
             encoding=ChartEncoding(
                 category=current.encoding.x or current.encoding.category,
                 value=current.encoding.y or current.encoding.value,
             ),
         )
-    elif chart_type == "table":
-        patch = ChartPatch(chartType="table")
+    elif chart_type == CHART_TYPE_TABLE:
+        patch = ChartPatch(chartType=CHART_TYPE_TABLE)
     else:
         patch = ChartPatch(
             chartType=chart_type,
@@ -358,7 +381,7 @@ def _change_chart_type_action(state: ChartAgentState) -> ChartAgentAction:
             ),
         )
     return ChartAgentAction(
-        type="update_chart",
+        type=ACTION_UPDATE_CHART,
         chartId=current.id,
         patch=patch,
         message=f"已切换为{_chart_type_label(chart_type)}。",
@@ -379,24 +402,24 @@ def _require_current_chart(state: ChartAgentState) -> ChartSpec:
 
 def _resolve_chart_type(message: str) -> str:
     if "折线" in message:
-        return "line"
+        return CHART_TYPE_LINE
     if "饼图" in message:
-        return "pie"
+        return CHART_TYPE_PIE
     if "表格" in message:
-        return "table"
-    return "bar"
+        return CHART_TYPE_TABLE
+    return CHART_TYPE_BAR
 
 
 def _chart_type_label(chart_type: str) -> str:
-    return {"bar": "柱状图", "line": "折线图", "pie": "饼图", "table": "表格"}[chart_type]
+    return CHART_TYPE_LABELS[chart_type]
 
 
 def _metric_label(metric: str) -> str:
-    return {"sales": "销售额", "orders": "订单数", "profit_rate": "利润率"}.get(metric, metric)
+    return METRIC_LABELS.get(metric, metric)
 
 
 def _dimension_label(dimension: str) -> str:
-    return {"date": "日期趋势", "region": "各地区", "channel": "各渠道"}.get(dimension, "")
+    return DIMENSION_LABELS.get(dimension, "")
 
 
 def _with_error(state: ChartAgentState, message: str) -> ChartAgentState:
@@ -404,4 +427,4 @@ def _with_error(state: ChartAgentState, message: str) -> ChartAgentState:
 
 
 def _error_action(code: str, message: str) -> ChartAgentAction:
-    return ChartAgentAction(type="error", code=code, message=message)
+    return ChartAgentAction(type=ACTION_ERROR, code=code, message=message)
