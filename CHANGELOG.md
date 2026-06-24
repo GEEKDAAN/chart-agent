@@ -33,6 +33,20 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.15] - 2026-06-24
+
+- 【文档】：
+  1. 新增根目录 `AGENTS.md`，作为人类开发者和 AI Agent 的项目协作规则入口。
+  2. 新增后端工程规范，明确 FastAPI、LangGraph、services、schemas 和 domain 常量的分层边界。
+  3. 新增前端工程规范，明确 CopilotKit、ChartSpec、ECharts 渲染和前端状态同步的职责边界。
+  4. 新增测试规范，整理后端、Runtime、前端构建、Playwright E2E 和中文编码检查的适用场景。
+  5. 将“禁止新增未集中管理的魔法值”写入硬规则，要求 intent、toolName、chart type、action type、指标、维度、颜色和 progress step id 集中管理。
+
+- 【工程】：
+  1. 在根 README 中补充工程规范入口。
+  2. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.15`。
+  3. 本版本只新增工程规范和版本元信息，不改变业务行为。
+
 ## [0.11.14] - 2026-06-24
 
 - 【后端】：

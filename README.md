@@ -31,6 +31,14 @@ docs/      架构说明和设计文档
 scripts/   本地三服务启动和停止脚本
 ```
 
+## 工程规范
+
+协作入口见 [AGENTS.md](AGENTS.md)。详细规范：
+
+- [后端工程规范](docs/backend-engineering-guidelines.md)
+- [前端工程规范](docs/frontend-engineering-guidelines.md)
+- [测试规范](docs/testing-guidelines.md)
+
 ## 本地开发
 
 当前官方 CopilotKit Runtime 分支需要同时运行三个服务：
