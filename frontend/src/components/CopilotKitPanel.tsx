@@ -9,6 +9,17 @@ import {
 import { z } from "zod";
 import "@copilotkit/react-core/v2/styles.css";
 
+import {
+  ACTION_CREATE_CHART,
+  ACTION_ERROR,
+  ACTION_UPDATE_CHART,
+  CHART_AGENT_ACTION_TOOL,
+  CHART_AGENT_ID,
+  CHART_AGENT_MUTATING_ACTION_TYPES,
+  CHART_AGENT_PROGRESS_TOOL,
+  DEFAULT_PAGE_CONTEXT,
+  DEFAULT_USER_CONTEXT
+} from "../domain/chartAgentProtocol";
 import { copilotRuntimeUrl, isCopilotEnabled } from "../lib/config";
 import { useLatestChartAgentAction } from "../lib/chartAgentActionStore";
 import { useChartAgentProgress } from "../lib/chartAgentProgressStore";
@@ -48,7 +59,7 @@ const progressParametersSchema = z.object({
 
 const actionParametersSchema = z.object({
   actionId: z.string().optional(),
-  actionType: z.enum(["create_chart", "update_chart"]).optional()
+  actionType: z.enum(CHART_AGENT_MUTATING_ACTION_TYPES).optional()
 });
 
 const suggestions = [
@@ -62,8 +73,8 @@ export function CopilotKitPanel({ chart, onApplyAction, onApplyError }: CopilotK
   const runtimeContext = useMemo<ChartAgentRuntimeContext>(
     () => ({
       currentChart: chart,
-      pageContext: { source: "copilotkit" },
-      userContext: { userId: "u_demo", tenantId: "t_demo" }
+      pageContext: DEFAULT_PAGE_CONTEXT,
+      userContext: DEFAULT_USER_CONTEXT
     }),
     [chart]
   );
@@ -85,7 +96,7 @@ export function CopilotKitPanel({ chart, onApplyAction, onApplyError }: CopilotK
       <ChartAgentProgressRenderer />
       <ChartAgentActionRenderer onApplyAction={onApplyAction} onApplyError={onApplyError} />
       <CopilotSidebar
-        agentId="chart-agent"
+        agentId={CHART_AGENT_ID}
         defaultOpen
         width={420}
         labels={{
@@ -147,7 +158,7 @@ function ChartAgentActionRenderer({
   }, [streamedAction, onApplyAction, onApplyError]);
 
   useRenderTool({
-    name: "chartAgentAction",
+    name: CHART_AGENT_ACTION_TOOL,
     parameters: actionParametersSchema,
     render: ({ parameters, result }) => {
       const payload = readActionPayload(result);
@@ -198,7 +209,7 @@ function ChartAgentActionApplier({
 
 function ChartAgentProgressRenderer() {
   useRenderTool({
-    name: "chartAgentProgress",
+    name: CHART_AGENT_PROGRESS_TOOL,
     parameters: progressParametersSchema,
     render: ({ status, parameters, result }) => {
       const resultSteps = readProgressSteps(result);
@@ -280,13 +291,13 @@ function isChartAgentAction(value: unknown): value is ChartAgentAction {
   if (!value || typeof value !== "object") return false;
 
   const action = value as Record<string, unknown>;
-  if (action.type === "create_chart") {
+  if (action.type === ACTION_CREATE_CHART) {
     return typeof action.message === "string" && Boolean(action.chart && typeof action.chart === "object");
   }
-  if (action.type === "update_chart") {
+  if (action.type === ACTION_UPDATE_CHART) {
     return typeof action.message === "string" && typeof action.chartId === "string" && Boolean(action.patch && typeof action.patch === "object");
   }
-  if (action.type === "error") {
+  if (action.type === ACTION_ERROR) {
     return typeof action.message === "string" && typeof action.code === "string";
   }
   return false;

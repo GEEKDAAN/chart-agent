@@ -4,6 +4,14 @@ import test, { type TestContext } from "node:test";
 import type { BaseEvent, RunAgentInput } from "@ag-ui/core";
 
 import { ChartAgent } from "../src/chart-agent.js";
+import {
+  ACTION_CREATE_CHART,
+  ACTION_ERROR,
+  ACTION_UPDATE_CHART,
+  CHART_AGENT_ACTION_TOOL,
+  CHART_AGENT_CONTEXT_KEY,
+  CHART_AGENT_PROGRESS_TOOL
+} from "../src/protocol.js";
 
 type FetchCall = {
   url: string;
@@ -14,9 +22,9 @@ test("forwards current chart context and emits progress/action for chart creatio
   const fetchCalls: FetchCall[] = [];
   mockFetch(t, fetchCalls, {
     conversationId: "thread-1",
-    intent: "create_chart",
+    intent: ACTION_CREATE_CHART,
     action: {
-      type: "create_chart",
+      type: ACTION_CREATE_CHART,
       message: "已生成图表",
       chart: { chartType: "bar", title: "销售额" },
       chartId: "chart-1"
@@ -39,11 +47,11 @@ test("forwards current chart context and emits progress/action for chart creatio
   assert.deepEqual(fetchCalls[0]?.body.pageContext, { source: "test-page" });
   assert.deepEqual(fetchCalls[0]?.body.userContext, { userId: "u1", tenantId: "t1" });
 
-  assertToolStarted(events, "chartAgentProgress");
-  assertToolStarted(events, "chartAgentAction");
-  const actionResult = parseToolResult(events, "chartAgentAction");
+  assertToolStarted(events, CHART_AGENT_PROGRESS_TOOL);
+  assertToolStarted(events, CHART_AGENT_ACTION_TOOL);
+  const actionResult = parseToolResult(events, CHART_AGENT_ACTION_TOOL);
   assert.equal(actionResult.actionId.startsWith("action-"), true);
-  assert.equal(actionResult.action.type, "create_chart");
+  assert.equal(actionResult.action.type, ACTION_CREATE_CHART);
   assert.equal(actionResult.action.message, "已生成图表");
 });
 
@@ -53,7 +61,7 @@ test("uses state chartAgentContext when forwardedProps are absent", async (t) =>
     conversationId: "thread-2",
     intent: "update_style",
     action: {
-      type: "update_chart",
+      type: ACTION_UPDATE_CHART,
       message: "已更新样式",
       patch: { series: [{ name: "抖音", color: "#ef4444" }] }
     }
@@ -64,15 +72,15 @@ test("uses state chartAgentContext when forwardedProps are absent", async (t) =>
     runId: "run-2",
     messages: [{ id: "m1", role: "user", content: "把抖音改成红色" }],
     state: {
-      chartAgentContext: {
+      [CHART_AGENT_CONTEXT_KEY]: {
         currentChart: { chartType: "bar", title: "渠道销售额" }
       }
     }
   });
 
   assert.deepEqual(fetchCalls[0]?.body.currentChart, { chartType: "bar", title: "渠道销售额" });
-  assertToolStarted(events, "chartAgentProgress");
-  assertToolStarted(events, "chartAgentAction");
+  assertToolStarted(events, CHART_AGENT_PROGRESS_TOOL);
+  assertToolStarted(events, CHART_AGENT_ACTION_TOOL);
 });
 
 test("does not emit progress or action tools for current chart questions", async (t) => {
@@ -81,7 +89,7 @@ test("does not emit progress or action tools for current chart questions", async
     conversationId: "thread-3",
     intent: "answer_current_chart_question",
     action: {
-      type: "error",
+      type: ACTION_ERROR,
       message: "当前图表包含抖音、小红书、微信、天猫。"
     }
   });
@@ -96,8 +104,8 @@ test("does not emit progress or action tools for current chart questions", async
   });
 
   assert.equal(fetchCalls.length, 1);
-  assertNoToolStarted(events, "chartAgentProgress");
-  assertNoToolStarted(events, "chartAgentAction");
+  assertNoToolStarted(events, CHART_AGENT_PROGRESS_TOOL);
+  assertNoToolStarted(events, CHART_AGENT_ACTION_TOOL);
   assertTextContains(events, "当前图表包含抖音、小红书、微信、天猫。");
 });
 

@@ -1,4 +1,10 @@
 import type { ChartSpec } from "../types/chart";
+import {
+  CHART_AGENT_CONTEXT_KEY,
+  COPILOT_AGENT_RUN_METHOD,
+  WINDOW_CHART_AGENT_CONTEXT_KEY,
+  WINDOW_CHART_AGENT_FETCH_PATCHED_KEY
+} from "../domain/chartAgentProtocol";
 import { observeCopilotProgress } from "./copilotProgressObserver";
 
 export type ChartAgentRuntimeContext = {
@@ -18,15 +24,15 @@ declare global {
 }
 
 export function syncChartAgentRuntimeContext(context: ChartAgentRuntimeContext) {
-  window.__CHART_AGENT_CONTEXT__ = context;
+  window[WINDOW_CHART_AGENT_CONTEXT_KEY] = context;
 }
 
 export function installCopilotRuntimeContextPatch(runtimeUrl: string) {
-  if (window.__CHART_AGENT_FETCH_PATCHED__) return;
+  if (window[WINDOW_CHART_AGENT_FETCH_PATCHED_KEY]) return;
 
   const originalFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    const context = window.__CHART_AGENT_CONTEXT__;
+    const context = window[WINDOW_CHART_AGENT_CONTEXT_KEY];
     if (!context || !isCopilotRuntimeRequest(input, runtimeUrl)) {
       return originalFetch(input, init);
     }
@@ -36,7 +42,7 @@ export function installCopilotRuntimeContextPatch(runtimeUrl: string) {
     observeCopilotProgress(response);
     return response;
   };
-  window.__CHART_AGENT_FETCH_PATCHED__ = true;
+  window[WINDOW_CHART_AGENT_FETCH_PATCHED_KEY] = true;
 }
 
 function isCopilotRuntimeRequest(input: RequestInfo | URL, runtimeUrl: string): boolean {
@@ -63,7 +69,7 @@ function patchRequestInit(
 
   try {
     const payload = JSON.parse(init.body);
-    if (payload.method === "agent/run" && payload.body) {
+    if (payload.method === COPILOT_AGENT_RUN_METHOD && payload.body) {
       payload.body = {
         ...payload.body,
         forwardedProps: {
@@ -74,7 +80,7 @@ function patchRequestInit(
           ...(payload.body.properties ?? {}),
           ...context,
         },
-        chartAgentContext: context,
+        [CHART_AGENT_CONTEXT_KEY]: context,
       };
 
       return {
@@ -108,7 +114,7 @@ function patchRequestInit(
         },
         metadata: {
           ...metadata,
-          chartAgentContext: context,
+          [CHART_AGENT_CONTEXT_KEY]: context,
         },
       },
     };
@@ -151,6 +157,6 @@ function withRuntimeContext(
       ...properties,
       ...context,
     },
-    chartAgentContext: context,
+    [CHART_AGENT_CONTEXT_KEY]: context,
   };
 }

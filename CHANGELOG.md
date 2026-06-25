@@ -33,6 +33,20 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.18] - 2026-06-25
+
+- 【前端】：
+  1. 新增 `frontend/src/domain/chartAgentProtocol.ts`，集中管理前端版本号、CopilotKit agent id、工具名、action type、chart type、column type、intent 和默认运行上下文。
+  2. 将 CopilotKit 工具渲染、ChartSpec 校验、Runtime 上下文注入和 action 应用逻辑中的高频协议字符串迁移为常量引用。
+
+- 【Runtime】：
+  1. 新增 `runtime/src/protocol.ts`，集中管理 Runtime agent id、工具名、action type、intent、后端接口路径、默认上下文和上下文 marker。
+  2. 将 Runtime 事件发送、后端请求、进度模板和测试断言中的协议字符串迁移为常量引用。
+
+- 【工程】：
+  1. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.18`。
+  2. 本版本只做前端与 Runtime 协议常量治理，不改变 CopilotKit 聊天、上下文传递或图表应用行为。
+
 ## [0.11.17] - 2026-06-24
 
 - 【后端】：

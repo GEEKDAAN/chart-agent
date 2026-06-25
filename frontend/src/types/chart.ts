@@ -1,12 +1,17 @@
-export type ChartType = "bar" | "line" | "pie" | "table";
-export type ColumnType = "string" | "number" | "date" | "currency" | "percent";
-export type Intent =
-  | "create_chart"
-  | "update_style"
-  | "update_data"
-  | "change_chart_type"
-  | "explain_chart"
-  | "unknown";
+import type {
+  ACTION_CREATE_CHART,
+  ACTION_ERROR,
+  ACTION_UPDATE_CHART,
+  CHART_AGENT_ACTION_TYPES,
+  CHART_TYPES,
+  COLUMN_TYPES,
+  INTENTS
+} from "../domain/chartAgentProtocol";
+
+export type ChartType = (typeof CHART_TYPES)[number];
+export type ColumnType = (typeof COLUMN_TYPES)[number];
+export type Intent = (typeof INTENTS)[number];
+export type ChartAgentActionType = (typeof CHART_AGENT_ACTION_TYPES)[number];
 
 export type ChartColumn = {
   key: string;
@@ -64,18 +69,18 @@ export type ChartPatch = {
 
 export type ChartAgentAction =
   | {
-      type: "create_chart";
+      type: typeof ACTION_CREATE_CHART;
       message: string;
       chart: ChartSpec;
     }
   | {
-      type: "update_chart";
+      type: typeof ACTION_UPDATE_CHART;
       message: string;
       chartId: string;
       patch: ChartPatch;
     }
   | {
-      type: "error";
+      type: typeof ACTION_ERROR;
       message: string;
       code: string;
     };

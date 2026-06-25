@@ -1,5 +1,12 @@
 import { publishChartAgentProgress } from "./chartAgentProgressStore";
 import { publishChartAgentAction } from "./chartAgentActionStore";
+import {
+  ACTION_CREATE_CHART,
+  ACTION_ERROR,
+  ACTION_UPDATE_CHART,
+  COPILOT_TOOL_CALL_ARGS_EVENT,
+  COPILOT_TOOL_CALL_RESULT_EVENT
+} from "../domain/chartAgentProtocol";
 import type { ChartAgentAction } from "../types/chart";
 import type { ProgressSnapshot } from "../types/progress";
 
@@ -48,10 +55,10 @@ function publishProgressFromSseBlock(block: string) {
   if (!event || typeof event !== "object") return;
 
   const value = event as Record<string, unknown>;
-  if (value.type === "TOOL_CALL_ARGS") {
+  if (value.type === COPILOT_TOOL_CALL_ARGS_EVENT) {
     publishSnapshotFromUnknown(value.delta);
   }
-  if (value.type === "TOOL_CALL_RESULT") {
+  if (value.type === COPILOT_TOOL_CALL_RESULT_EVENT) {
     publishSnapshotFromUnknown(value.content);
     publishActionFromUnknown(value.content);
   }
@@ -91,13 +98,13 @@ function isChartAgentAction(value: unknown): value is ChartAgentAction {
   if (!value || typeof value !== "object") return false;
 
   const action = value as Record<string, unknown>;
-  if (action.type === "create_chart") {
+  if (action.type === ACTION_CREATE_CHART) {
     return typeof action.message === "string" && Boolean(action.chart && typeof action.chart === "object");
   }
-  if (action.type === "update_chart") {
+  if (action.type === ACTION_UPDATE_CHART) {
     return typeof action.message === "string" && typeof action.chartId === "string" && Boolean(action.patch && typeof action.patch === "object");
   }
-  if (action.type === "error") {
+  if (action.type === ACTION_ERROR) {
     return typeof action.message === "string" && typeof action.code === "string";
   }
   return false;

@@ -3,6 +3,31 @@ import type { BaseEvent, Message, RunAgentInput } from "@ag-ui/core";
 import { Observable } from "rxjs";
 
 import { progressSnapshot, progressSnapshots } from "./progress.js";
+import {
+  AGUI_RUN_ERROR_EVENT,
+  AGUI_RUN_FINISHED_EVENT,
+  AGUI_RUN_STARTED_EVENT,
+  AGUI_TEXT_MESSAGE_CONTENT_EVENT,
+  AGUI_TEXT_MESSAGE_END_EVENT,
+  AGUI_TEXT_MESSAGE_START_EVENT,
+  AGUI_TOOL_CALL_ARGS_EVENT,
+  AGUI_TOOL_CALL_END_EVENT,
+  AGUI_TOOL_CALL_RESULT_EVENT,
+  AGUI_TOOL_CALL_START_EVENT,
+  ACTION_CREATE_CHART,
+  ACTION_ERROR,
+  ACTION_UPDATE_CHART,
+  CHART_AGENT_ACTION_TOOL,
+  CHART_AGENT_BACKEND_CHAT_PATH,
+  CHART_AGENT_CONTEXT_KEY,
+  CHART_AGENT_CONTEXT_MARKER_PREFIX,
+  CHART_AGENT_ID,
+  CHART_AGENT_PROGRESS_TOOL,
+  DEFAULT_BACKEND_URL,
+  DEFAULT_PAGE_CONTEXT,
+  DEFAULT_USER_CONTEXT,
+  INTENT_CREATE_CHART
+} from "./protocol.js";
 
 type ChartAgentOptions = {
   backendUrl: string;
@@ -12,7 +37,7 @@ type ChartAgentResponse = {
   conversationId: string;
   intent: string;
   action: {
-    type: "create_chart" | "update_chart" | "error";
+    type: typeof ACTION_CREATE_CHART | typeof ACTION_UPDATE_CHART | typeof ACTION_ERROR;
     message: string;
     chart?: unknown;
     chartId?: string;
@@ -33,7 +58,7 @@ type RuntimeContext = {
 export class ChartAgent extends AbstractAgent {
   constructor({ backendUrl }: ChartAgentOptions) {
     super({
-      agentId: "chart-agent",
+      agentId: CHART_AGENT_ID,
       description: "Generate and edit validated ChartSpec charts."
     });
     process.env.CHART_AGENT_BACKEND_URL = normalizeBackendUrl(backendUrl);
@@ -53,15 +78,15 @@ export class ChartAgent extends AbstractAgent {
     const progressToolCallId = `progress-${crypto.randomUUID()}`;
     const actionToolCallId = `action-${crypto.randomUUID()}`;
     let progressToolStarted = false;
-    let progressIntent = "create_chart";
+    let progressIntent = INTENT_CREATE_CHART;
 
     subscriber.next({
-      type: "RUN_STARTED",
+      type: AGUI_RUN_STARTED_EVENT,
       threadId: input.threadId,
       runId: input.runId,
       input
     } as BaseEvent);
-    subscriber.next({ type: "TEXT_MESSAGE_START", messageId, role: "assistant" } as BaseEvent);
+    subscriber.next({ type: AGUI_TEXT_MESSAGE_START_EVENT, messageId, role: "assistant" } as BaseEvent);
 
     try {
       const message = lastUserMessage(input.messages);
@@ -79,14 +104,14 @@ export class ChartAgent extends AbstractAgent {
       emitActionEvent(subscriber, messageId, actionToolCallId, chartResponse);
 
       subscriber.next({
-        type: "TEXT_MESSAGE_CONTENT",
+        type: AGUI_TEXT_MESSAGE_CONTENT_EVENT,
         messageId,
         delta: formatChartAgentResponse(chartResponse),
         timestamp: 0
       } as BaseEvent);
-      subscriber.next({ type: "TEXT_MESSAGE_END", messageId, timestamp: 0 } as BaseEvent);
+      subscriber.next({ type: AGUI_TEXT_MESSAGE_END_EVENT, messageId, timestamp: 0 } as BaseEvent);
       subscriber.next({
-        type: "RUN_FINISHED",
+        type: AGUI_RUN_FINISHED_EVENT,
         threadId: input.threadId,
         runId: input.runId
       } as BaseEvent);
@@ -95,7 +120,7 @@ export class ChartAgent extends AbstractAgent {
       const message = error instanceof Error ? error.message : String(error);
       if (progressToolStarted) {
         subscriber.next({
-          type: "TOOL_CALL_RESULT",
+          type: AGUI_TOOL_CALL_RESULT_EVENT,
           messageId: `tool-result-${progressToolCallId}-failed`,
           toolCallId: progressToolCallId,
           content: JSON.stringify(progressSnapshot(progressIntent, progressToolCallId, 1, "failed")),
@@ -103,20 +128,20 @@ export class ChartAgent extends AbstractAgent {
           timestamp: 0
         } as BaseEvent);
         subscriber.next({
-          type: "TOOL_CALL_END",
+          type: AGUI_TOOL_CALL_END_EVENT,
           toolCallId: progressToolCallId,
           timestamp: 0
         } as BaseEvent);
       }
       subscriber.next({
-        type: "TEXT_MESSAGE_CONTENT",
+        type: AGUI_TEXT_MESSAGE_CONTENT_EVENT,
         messageId,
         delta: `处理失败：${message}`,
         timestamp: 0
       } as BaseEvent);
-      subscriber.next({ type: "TEXT_MESSAGE_END", messageId, timestamp: 0 } as BaseEvent);
+      subscriber.next({ type: AGUI_TEXT_MESSAGE_END_EVENT, messageId, timestamp: 0 } as BaseEvent);
       subscriber.next({
-        type: "RUN_ERROR",
+        type: AGUI_RUN_ERROR_EVENT,
         message,
         code: "chart_agent_error"
       } as BaseEvent);
@@ -126,15 +151,15 @@ export class ChartAgent extends AbstractAgent {
 
   private async requestChartAgent(input: RunAgentInput, message: string, context: RuntimeContext): Promise<ChartAgentResponse> {
     const backendUrl = normalizeBackendUrl(process.env.CHART_AGENT_BACKEND_URL);
-    const response = await fetch(`${backendUrl}/chart-agent/chat`, {
+    const response = await fetch(`${backendUrl}${CHART_AGENT_BACKEND_CHAT_PATH}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         conversationId: input.threadId,
         message,
         currentChart: context.currentChart ?? null,
-        pageContext: context.pageContext ?? { source: "copilotkit-official-runtime-poc" },
-        userContext: context.userContext ?? { userId: "copilotkit_user", tenantId: "demo" }
+        pageContext: context.pageContext ?? DEFAULT_PAGE_CONTEXT,
+        userContext: context.userContext ?? DEFAULT_USER_CONTEXT
       })
     });
 
@@ -158,23 +183,23 @@ function emitProgressEvents(
   const [initialProgress] = snapshots;
   onStarted();
   subscriber.next({
-    type: "TOOL_CALL_START",
+    type: AGUI_TOOL_CALL_START_EVENT,
     toolCallId,
-    toolCallName: "chartAgentProgress",
+    toolCallName: CHART_AGENT_PROGRESS_TOOL,
     parentMessageId: messageId,
     rawEvent: { parameters: initialProgress },
     timestamp: 0
   } as BaseEvent);
   for (const snapshot of snapshots.slice(0, -1)) {
     subscriber.next({
-      type: "TOOL_CALL_ARGS",
+      type: AGUI_TOOL_CALL_ARGS_EVENT,
       toolCallId,
       delta: JSON.stringify(snapshot),
       timestamp: 0
     } as BaseEvent);
   }
   subscriber.next({
-    type: "TOOL_CALL_RESULT",
+    type: AGUI_TOOL_CALL_RESULT_EVENT,
     messageId: `tool-result-${toolCallId}-1`,
     toolCallId,
     content: JSON.stringify(snapshots.at(-1) ?? initialProgress),
@@ -182,7 +207,7 @@ function emitProgressEvents(
     timestamp: 0
   } as BaseEvent);
   subscriber.next({
-    type: "TOOL_CALL_END",
+    type: AGUI_TOOL_CALL_END_EVENT,
     toolCallId,
     timestamp: 0
   } as BaseEvent);
@@ -197,15 +222,15 @@ function emitActionEvent(
   if (!shouldEmitChartAction(response)) return;
 
   subscriber.next({
-    type: "TOOL_CALL_START",
+    type: AGUI_TOOL_CALL_START_EVENT,
     toolCallId,
-    toolCallName: "chartAgentAction",
+    toolCallName: CHART_AGENT_ACTION_TOOL,
     parentMessageId: messageId,
     rawEvent: { parameters: { actionId: toolCallId, actionType: response.action.type } },
     timestamp: 0
   } as BaseEvent);
   subscriber.next({
-    type: "TOOL_CALL_RESULT",
+    type: AGUI_TOOL_CALL_RESULT_EVENT,
     messageId: `tool-result-${toolCallId}-1`,
     toolCallId,
     content: JSON.stringify({ actionId: toolCallId, action: response.action }),
@@ -213,7 +238,7 @@ function emitActionEvent(
     timestamp: 0
   } as BaseEvent);
   subscriber.next({
-    type: "TOOL_CALL_END",
+    type: AGUI_TOOL_CALL_END_EVENT,
     toolCallId,
     timestamp: 0
   } as BaseEvent);
@@ -237,7 +262,7 @@ function lastUserMessage(messages: Message[] | undefined): string {
 function resolveRuntimeContext(input: RunAgentInput): RuntimeContext {
   const forwardedProps = isRecord(input.forwardedProps) ? input.forwardedProps : {};
   const state = isRecord(input.state) ? input.state : {};
-  const chartAgentContext = isRecord(state.chartAgentContext) ? state.chartAgentContext : {};
+  const chartAgentContext = isRecord(state[CHART_AGENT_CONTEXT_KEY]) ? state[CHART_AGENT_CONTEXT_KEY] : {};
   return { ...chartAgentContext, ...forwardedProps } as RuntimeContext;
 }
 
@@ -246,12 +271,11 @@ function formatChartAgentResponse(response: ChartAgentResponse): string {
 }
 
 function shouldEmitChartAction(response: ChartAgentResponse): boolean {
-  return response.action.type === "create_chart" || response.action.type === "update_chart";
+  return response.action.type === ACTION_CREATE_CHART || response.action.type === ACTION_UPDATE_CHART;
 }
 
 function stripContextMarker(content: string): string {
-  const prefix = "<!-- chart-agent-context:";
-  const start = content.indexOf(prefix);
+  const start = content.indexOf(CHART_AGENT_CONTEXT_MARKER_PREFIX);
   if (start < 0) return content;
   const end = content.indexOf(" -->", start);
   if (end < 0) return content.slice(0, start);
@@ -264,7 +288,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function normalizeBackendUrl(value: string | undefined): string {
   if (!value || value === "undefined" || value === "null") {
-    return "http://127.0.0.1:8000";
+    return DEFAULT_BACKEND_URL;
   }
   return value.replace(/\/$/, "");
 }

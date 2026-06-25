@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useState } from "react";
 
 import { ChartPanel } from "./components/ChartPanel";
+import { APP_VERSION } from "./domain/chartAgentProtocol";
 import { applyChartAction } from "./lib/chartSpec";
 import { isCopilotEnabled } from "./lib/config";
 import type { ChartAgentAction, ChartSpec } from "./types/chart";
@@ -38,7 +39,7 @@ export function App() {
             <p>{status}</p>
           </div>
           <div className="topbar-badges">
-            <span className="status-pill">v0.11.17</span>
+            <span className="status-pill">v{APP_VERSION}</span>
             <span className="status-pill">{isCopilotEnabled ? "CopilotKit 已启用" : "CopilotKit 未配置"}</span>
           </div>
         </header>

@@ -1,6 +1,13 @@
 import type { ChartAgentAction, ChartPatch, ChartSpec } from "../types/chart";
+import {
+  ACTION_CREATE_CHART,
+  ACTION_ERROR,
+  CHART_TYPE_PIE,
+  CHART_TYPES,
+  XY_CHART_TYPES
+} from "../domain/chartAgentProtocol";
 
-const SUPPORTED_TYPES = new Set(["bar", "line", "pie", "table"]);
+const SUPPORTED_TYPES = new Set(CHART_TYPES);
 const COLOR_PATTERN = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 export function validateChartSpec(chart: ChartSpec): string[] {
@@ -23,10 +30,10 @@ export function validateChartSpec(chart: ChartSpec): string[] {
     if (!columnKeys.has(key)) errors.push(`encoding 引用了不存在的字段：${key}`);
   }
 
-  if ((chart.chartType === "bar" || chart.chartType === "line") && (!chart.encoding.x || !chart.encoding.y)) {
+  if (XY_CHART_TYPES.includes(chart.chartType as (typeof XY_CHART_TYPES)[number]) && (!chart.encoding.x || !chart.encoding.y)) {
     errors.push("柱状图和折线图必须配置 encoding.x 和 encoding.y。");
   }
-  if (chart.chartType === "pie" && (!chart.encoding.category || !chart.encoding.value)) {
+  if (chart.chartType === CHART_TYPE_PIE && (!chart.encoding.category || !chart.encoding.value)) {
     errors.push("饼图必须配置 encoding.category 和 encoding.value。");
   }
 
@@ -56,10 +63,10 @@ export function mergeChartPatch(current: ChartSpec, patch: ChartPatch): ChartSpe
 }
 
 export function applyChartAction(current: ChartSpec | null, action: ChartAgentAction): ChartSpec {
-  if (action.type === "error") {
+  if (action.type === ACTION_ERROR) {
     throw new Error(action.message);
   }
-  if (action.type === "create_chart") {
+  if (action.type === ACTION_CREATE_CHART) {
     assertValid(action.chart);
     return action.chart;
   }
