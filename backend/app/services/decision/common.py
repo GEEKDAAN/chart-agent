@@ -1,7 +1,12 @@
-from app.schemas.chart import ChartAgentDecision, Intent
+from app.schemas.chart import ChartAgentDecision, ChartAgentToolName, DecisionSource, Intent
 
 
-def make_decision(intent: Intent, tool_name: str, source: str, reason: str) -> ChartAgentDecision:
+def make_decision(
+    intent: Intent,
+    tool_name: ChartAgentToolName,
+    source: DecisionSource,
+    reason: str,
+) -> ChartAgentDecision:
     return ChartAgentDecision(
         intent=intent,
         toolName=tool_name,

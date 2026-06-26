@@ -1,5 +1,6 @@
 from app.agents.chart_agent_state import ChartAgentState
 from app.domain.colors import STYLE_COLOR_TERMS
+from app.domain.decision_sources import DECISION_SOURCE_FALLBACK
 from app.domain.intents import (
     INTENT_CHANGE_CHART_TYPE,
     INTENT_CREATE_CHART,
@@ -35,29 +36,29 @@ def fallback_chart_agent_decision(state: ChartAgentState) -> ChartAgentDecision:
     normalized = message.strip().lower()
 
     if normalized in {"你好", "您好", "hello", "hi", "嗨", "哈喽"}:
-        return make_decision(INTENT_SMALLTALK, TOOL_SMALLTALK, "fallback", "用户在进行普通问候。")
+        return make_decision(INTENT_SMALLTALK, TOOL_SMALLTALK, DECISION_SOURCE_FALLBACK, "用户在进行普通问候。")
     if any(keyword in normalized for keyword in ["你是谁", "你能做什么", "怎么用", "帮助", "help"]):
-        return make_decision(INTENT_HELP, TOOL_HELP, "fallback", "用户在询问能力或使用方式。")
+        return make_decision(INTENT_HELP, TOOL_HELP, DECISION_SOURCE_FALLBACK, "用户在询问能力或使用方式。")
     if any(keyword in normalized for keyword in ["天气", "新闻", "写代码", "讲笑话", "翻译"]):
-        return make_decision(INTENT_OUT_OF_SCOPE, TOOL_OUT_OF_SCOPE, "fallback", "用户请求超出图表 Agent 范围。")
+        return make_decision(INTENT_OUT_OF_SCOPE, TOOL_OUT_OF_SCOPE, DECISION_SOURCE_FALLBACK, "用户请求超出图表 Agent 范围。")
 
     if _looks_like_style_update(normalized):
-        return make_decision(INTENT_UPDATE_STYLE, TOOL_UPDATE_STYLE, "fallback", "用户在修改图表样式。")
+        return make_decision(INTENT_UPDATE_STYLE, TOOL_UPDATE_STYLE, DECISION_SOURCE_FALLBACK, "用户在修改图表样式。")
     if current_chart and looks_like_visibility_update(normalized, current_chart):
-        return make_decision(INTENT_UPDATE_STYLE, TOOL_UPDATE_STYLE, "fallback", "用户在修改图表显示范围。")
+        return make_decision(INTENT_UPDATE_STYLE, TOOL_UPDATE_STYLE, DECISION_SOURCE_FALLBACK, "用户在修改图表显示范围。")
     if any(keyword in normalized for keyword in ["加一列", "新增指标", "加上", "增加指标"]):
-        return make_decision(INTENT_UPDATE_DATA, TOOL_UPDATE_DATA, "fallback", "用户在更新图表数据指标。")
+        return make_decision(INTENT_UPDATE_DATA, TOOL_UPDATE_DATA, DECISION_SOURCE_FALLBACK, "用户在更新图表数据指标。")
     if any(keyword in normalized for keyword in ["折线", "柱状", "饼图", "表格", "换成"]):
-        return make_decision(INTENT_CHANGE_CHART_TYPE, TOOL_CHANGE_CHART_TYPE, "fallback", "用户在切换图表类型。")
+        return make_decision(INTENT_CHANGE_CHART_TYPE, TOOL_CHANGE_CHART_TYPE, DECISION_SOURCE_FALLBACK, "用户在切换图表类型。")
 
     if current_chart and looks_like_new_chart_request(normalized, current_chart):
-        return make_decision(INTENT_CREATE_CHART, TOOL_CREATE_CHART, "fallback", "用户提出了新的图表维度或指标需求。")
+        return make_decision(INTENT_CREATE_CHART, TOOL_CREATE_CHART, DECISION_SOURCE_FALLBACK, "用户提出了新的图表维度或指标需求。")
 
     if current_chart and looks_like_current_chart_question(normalized, current_chart):
         return make_decision(
             INTENT_EXPLAIN_CHART,
             TOOL_ANSWER_CURRENT_CHART_QUESTION,
-            "fallback",
+            DECISION_SOURCE_FALLBACK,
             "用户在追问当前图表内容。",
         )
 
@@ -66,16 +67,16 @@ def fallback_chart_agent_decision(state: ChartAgentState) -> ChartAgentDecision:
             return make_decision(
                 INTENT_EXPLAIN_CHART,
                 TOOL_ANSWER_CURRENT_CHART_QUESTION,
-                "fallback",
+                DECISION_SOURCE_FALLBACK,
                 "用户在要求查看当前图表。",
             )
-        return make_decision(INTENT_UNCLEAR_CHART_REQUEST, TOOL_CLARIFY_CHART_REQUEST, "fallback", "缺少可解释的当前图表。")
+        return make_decision(INTENT_UNCLEAR_CHART_REQUEST, TOOL_CLARIFY_CHART_REQUEST, DECISION_SOURCE_FALLBACK, "缺少可解释的当前图表。")
 
     if any(keyword in normalized for keyword in ["解释", "说明", "分析一下"]):
-        return make_decision(INTENT_EXPLAIN_CHART, TOOL_ANSWER_CURRENT_CHART_QUESTION, "fallback", "用户在请求解释图表。")
+        return make_decision(INTENT_EXPLAIN_CHART, TOOL_ANSWER_CURRENT_CHART_QUESTION, DECISION_SOURCE_FALLBACK, "用户在请求解释图表。")
     if any(keyword in normalized for keyword in ["看", "生成", "统计", "销售额", "订单数", "利润率", "趋势"]):
-        return make_decision(INTENT_CREATE_CHART, TOOL_CREATE_CHART, "fallback", "用户在创建图表。")
-    return make_decision(INTENT_UNCLEAR_CHART_REQUEST, TOOL_CLARIFY_CHART_REQUEST, "fallback", "无法确定图表需求。")
+        return make_decision(INTENT_CREATE_CHART, TOOL_CREATE_CHART, DECISION_SOURCE_FALLBACK, "用户在创建图表。")
+    return make_decision(INTENT_UNCLEAR_CHART_REQUEST, TOOL_CLARIFY_CHART_REQUEST, DECISION_SOURCE_FALLBACK, "无法确定图表需求。")
 
 
 def _looks_like_style_update(message: str) -> bool:

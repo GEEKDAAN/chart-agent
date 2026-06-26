@@ -33,6 +33,17 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.19] - 2026-06-26
+
+- 【后端】：
+  1. 补充后端 `domain` 常量入口，集中管理 action error code、chart type、column type 和决策来源。
+  2. 将 `ChartSpec`、`ChartAgentAction`、`ChartAgentDecision` 的 schema 类型声明改为从后端领域常量派生，减少协议字符串重复。
+  3. 将后端 fallback/LLM 决策来源和核心 Agent 错误码改为常量引用，降低后续维护时的魔法值风险。
+
+- 【工程】：
+  1. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.19`。
+  2. 本版本只做后端协议常量治理，不改变 CopilotKit 对话、上下文传递或图表 action 行为。
+
 ## [0.11.18] - 2026-06-25
 
 - 【前端】：

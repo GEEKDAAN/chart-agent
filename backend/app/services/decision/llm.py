@@ -3,6 +3,7 @@ from typing import Any
 
 from app.agents.chart_agent_state import ChartAgentState
 from app.core.config import get_settings
+from app.domain.decision_sources import DECISION_SOURCE_LLM
 from app.domain.intents import (
     AVAILABLE_TOOLS,
     INTENT_CHANGE_CHART_TYPE,
@@ -31,7 +32,7 @@ def generate_llm_decision(state: ChartAgentState) -> ChartAgentDecision | None:
             settings.openai_model,
             settings.openai_base_url,
         )
-        return ChartAgentDecision.model_validate({**raw_decision, "source": "llm"})
+        return ChartAgentDecision.model_validate({**raw_decision, "source": DECISION_SOURCE_LLM})
     except Exception:
         return None
 

@@ -4,7 +4,19 @@ from typing import Any, Literal
 from langgraph.graph import END, StateGraph
 
 from app.agents.chart_agent_state import ChartAgentState, DataRequirements
-from app.domain.actions import ACTION_CREATE_CHART, ACTION_ERROR, ACTION_UPDATE_CHART
+from app.domain.actions import (
+    ACTION_CREATE_CHART,
+    ACTION_ERROR,
+    ACTION_UPDATE_CHART,
+    ERROR_CODE_AGENT_NO_ACTION,
+    ERROR_CODE_CLARIFICATION_REQUIRED,
+    ERROR_CODE_EXPLANATION,
+    ERROR_CODE_HELP,
+    ERROR_CODE_INVALID_ACTION,
+    ERROR_CODE_OUT_OF_SCOPE,
+    ERROR_CODE_SMALLTALK,
+    ERROR_CODE_VALIDATION_ERROR,
+)
 from app.domain.chart_types import (
     CHART_TYPE_BAR,
     CHART_TYPE_LABELS,
@@ -75,7 +87,7 @@ def run_chart_agent(request: ChartAgentRequest, initial_decision: ChartAgentDeci
     final_state = graph.invoke(initial_state)
     action = final_state.get("chart_action") or ChartAgentAction(
         type=ACTION_ERROR,
-        code="agent_no_action",
+        code=ERROR_CODE_AGENT_NO_ACTION,
         message="Agent 未生成有效图表动作。",
     )
     return ChartAgentResponse(
@@ -190,7 +202,7 @@ def _make_query_data_node(query_metrics_fn: QueryMetrics):
 def _make_generate_action_node(llm_action_fn: LLMAction):
     def generate_action_node(state: ChartAgentState) -> ChartAgentState:
         if state.get("errors"):
-            return {**state, "chart_action": _error_action("validation_error", state["errors"][0])}
+            return {**state, "chart_action": _error_action(ERROR_CODE_VALIDATION_ERROR, state["errors"][0])}
 
         conversational_action = _conversational_action(state.get("intent", INTENT_UNKNOWN))
         if conversational_action:
@@ -203,7 +215,7 @@ def _make_generate_action_node(llm_action_fn: LLMAction):
             try:
                 return {**state, "chart_action": _update_style_action(state)}
             except ValueError as error:
-                return {**state, "chart_action": _error_action("validation_error", str(error))}
+                return {**state, "chart_action": _error_action(ERROR_CODE_VALIDATION_ERROR, str(error))}
 
         try:
             llm_action = llm_action_fn(state)
@@ -226,11 +238,11 @@ def _make_generate_action_node(llm_action_fn: LLMAction):
                 action = _explain_chart_action(state)
             else:
                 action = _error_action(
-                    "clarification_required",
+                    ERROR_CODE_CLARIFICATION_REQUIRED,
                     "我还不能确定你想创建还是修改图表，请明确指标、维度或修改目标。",
                 )
         except ValueError as error:
-            action = _error_action("validation_error", str(error))
+            action = _error_action(ERROR_CODE_VALIDATION_ERROR, str(error))
         return {**state, "chart_action": action}
 
     return generate_action_node
@@ -239,22 +251,22 @@ def _make_generate_action_node(llm_action_fn: LLMAction):
 def _conversational_action(intent: Intent) -> ChartAgentAction | None:
     if intent == INTENT_SMALLTALK:
         return _error_action(
-            "smalltalk",
+            ERROR_CODE_SMALLTALK,
             "你好，我是 chart-agent。你可以告诉我想看什么指标、按什么维度分析，或者让我修改当前图表。",
         )
     if intent == INTENT_HELP:
         return _error_action(
-            "help",
+            ERROR_CODE_HELP,
             "我可以生成图表、修改图表颜色、切换图表类型、增加指标列，并解释当前图表。比如：看最近30天各渠道销售额、把抖音改成红色、换成折线图。",
         )
     if intent == INTENT_OUT_OF_SCOPE:
         return _error_action(
-            "out_of_scope",
+            ERROR_CODE_OUT_OF_SCOPE,
             "我目前只处理图表生成、图表编辑和图表解释相关需求。请告诉我你想分析的指标、维度或要修改的图表内容。",
         )
     if intent == INTENT_UNCLEAR_CHART_REQUEST:
         return _error_action(
-            "clarification_required",
+            ERROR_CODE_CLARIFICATION_REQUIRED,
             "我还不能确定你的图表需求。请明确指标、维度或修改目标，例如“看最近30天各渠道销售额”或“把抖音改成红色”。",
         )
     return None
@@ -263,12 +275,12 @@ def _conversational_action(intent: Intent) -> ChartAgentAction | None:
 def validate_action_node(state: ChartAgentState) -> ChartAgentState:
     action = state.get("chart_action")
     if not action:
-        return {**state, "chart_action": _error_action("agent_no_action", "Agent 未生成有效图表动作。")}
+        return {**state, "chart_action": _error_action(ERROR_CODE_AGENT_NO_ACTION, "Agent 未生成有效图表动作。")}
     try:
         ChartAgentAction.model_validate(action.model_dump(by_alias=True))
         return state
     except ValueError as error:
-        return {**state, "chart_action": _error_action("invalid_action", str(error))}
+        return {**state, "chart_action": _error_action(ERROR_CODE_INVALID_ACTION, str(error))}
 
 
 def respond_node(state: ChartAgentState) -> ChartAgentState:
@@ -390,7 +402,7 @@ def _change_chart_type_action(state: ChartAgentState) -> ChartAgentAction:
 
 def _explain_chart_action(state: ChartAgentState) -> ChartAgentAction:
     current = _require_current_chart(state)
-    return _error_action("explanation", answer_current_chart_question(state["user_message"], current))
+    return _error_action(ERROR_CODE_EXPLANATION, answer_current_chart_question(state["user_message"], current))
 
 
 def _require_current_chart(state: ChartAgentState) -> ChartSpec:

@@ -3,34 +3,74 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.domain.actions import ACTION_CREATE_CHART, ACTION_ERROR, ACTION_UPDATE_CHART
-from app.domain.chart_types import CHART_TYPE_PIE, XY_CHART_TYPES
+from app.domain.chart_types import CHART_TYPE_BAR, CHART_TYPE_LINE, CHART_TYPE_PIE, CHART_TYPE_TABLE, XY_CHART_TYPES
+from app.domain.column_types import (
+    COLUMN_TYPE_CURRENCY,
+    COLUMN_TYPE_DATE,
+    COLUMN_TYPE_NUMBER,
+    COLUMN_TYPE_PERCENT,
+    COLUMN_TYPE_STRING,
+)
+from app.domain.decision_sources import DECISION_SOURCE_FALLBACK, DECISION_SOURCE_LLM
+from app.domain.intents import (
+    INTENT_CHANGE_CHART_TYPE,
+    INTENT_CREATE_CHART,
+    INTENT_EXPLAIN_CHART,
+    INTENT_HELP,
+    INTENT_OUT_OF_SCOPE,
+    INTENT_SMALLTALK,
+    INTENT_UNCLEAR_CHART_REQUEST,
+    INTENT_UNKNOWN,
+    INTENT_UPDATE_DATA,
+    INTENT_UPDATE_STYLE,
+    TOOL_ANSWER_CURRENT_CHART_QUESTION,
+    TOOL_CHANGE_CHART_TYPE,
+    TOOL_CLARIFY_CHART_REQUEST,
+    TOOL_CREATE_CHART,
+    TOOL_HELP,
+    TOOL_OUT_OF_SCOPE,
+    TOOL_SMALLTALK,
+    TOOL_UPDATE_DATA,
+    TOOL_UPDATE_STYLE,
+)
 
-ChartType = Literal["bar", "line", "pie", "table"]
-ColumnType = Literal["string", "number", "date", "currency", "percent"]
+ChartType = Literal[
+    CHART_TYPE_BAR,
+    CHART_TYPE_LINE,
+    CHART_TYPE_PIE,
+    CHART_TYPE_TABLE,
+]
+ColumnType = Literal[
+    COLUMN_TYPE_STRING,
+    COLUMN_TYPE_NUMBER,
+    COLUMN_TYPE_DATE,
+    COLUMN_TYPE_CURRENCY,
+    COLUMN_TYPE_PERCENT,
+]
 Intent = Literal[
-    "create_chart",
-    "update_style",
-    "update_data",
-    "change_chart_type",
-    "explain_chart",
-    "smalltalk",
-    "help",
-    "out_of_scope",
-    "unclear_chart_request",
-    "unknown",
+    INTENT_CREATE_CHART,
+    INTENT_UPDATE_STYLE,
+    INTENT_UPDATE_DATA,
+    INTENT_CHANGE_CHART_TYPE,
+    INTENT_EXPLAIN_CHART,
+    INTENT_SMALLTALK,
+    INTENT_HELP,
+    INTENT_OUT_OF_SCOPE,
+    INTENT_UNCLEAR_CHART_REQUEST,
+    INTENT_UNKNOWN,
 ]
 ChartAgentToolName = Literal[
-    "create_chart",
-    "update_style",
-    "update_data",
-    "change_chart_type",
-    "answer_current_chart_question",
-    "clarify_chart_request",
-    "smalltalk",
-    "help",
-    "out_of_scope",
+    TOOL_CREATE_CHART,
+    TOOL_UPDATE_STYLE,
+    TOOL_UPDATE_DATA,
+    TOOL_CHANGE_CHART_TYPE,
+    TOOL_ANSWER_CURRENT_CHART_QUESTION,
+    TOOL_CLARIFY_CHART_REQUEST,
+    TOOL_SMALLTALK,
+    TOOL_HELP,
+    TOOL_OUT_OF_SCOPE,
 ]
-DecisionSource = Literal["llm", "fallback"]
+DecisionSource = Literal[DECISION_SOURCE_LLM, DECISION_SOURCE_FALLBACK]
 
 
 class UserContext(BaseModel):
@@ -138,7 +178,7 @@ class ChartAgentRequest(BaseModel):
 
 
 class ChartAgentAction(BaseModel):
-    type: Literal["create_chart", "update_chart", "error"]
+    type: Literal[ACTION_CREATE_CHART, ACTION_UPDATE_CHART, ACTION_ERROR]
     message: str
     chart: ChartSpec | None = None
     chartId: str | None = None
