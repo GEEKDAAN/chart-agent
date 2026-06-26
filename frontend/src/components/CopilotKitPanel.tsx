@@ -17,8 +17,14 @@ import {
   CHART_AGENT_ID,
   CHART_AGENT_MUTATING_ACTION_TYPES,
   CHART_AGENT_PROGRESS_TOOL,
+  CHART_AGENT_UI_BLOCKS_TOOL,
+  COLUMN_TYPES,
   DEFAULT_PAGE_CONTEXT,
-  DEFAULT_USER_CONTEXT
+  DEFAULT_USER_CONTEXT,
+  UI_BLOCK_DATA_TABLE,
+  UI_BLOCK_INSIGHT_CARD,
+  UI_BLOCK_METRIC_SUMMARY,
+  UI_BLOCK_SUGGESTED_ACTIONS
 } from "../domain/chartAgentProtocol";
 import { copilotRuntimeUrl, isCopilotEnabled } from "../lib/config";
 import { useLatestChartAgentAction } from "../lib/chartAgentActionStore";
@@ -28,7 +34,7 @@ import {
   syncChartAgentRuntimeContext,
   type ChartAgentRuntimeContext
 } from "../lib/copilotRuntimeContext";
-import type { ChartAgentAction, ChartSpec } from "../types/chart";
+import type { ChartAgentAction, ChartAgentUiBlock, ChartSpec } from "../types/chart";
 import type { ProgressStep } from "../types/progress";
 
 type JsonSerializable =
@@ -60,6 +66,62 @@ const progressParametersSchema = z.object({
 const actionParametersSchema = z.object({
   actionId: z.string().optional(),
   actionType: z.enum(CHART_AGENT_MUTATING_ACTION_TYPES).optional()
+});
+
+const uiBlockColumnSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  type: z.enum(COLUMN_TYPES)
+});
+
+const metricSummaryBlockSchema = z.object({
+  type: z.literal(UI_BLOCK_METRIC_SUMMARY),
+  title: z.string().optional(),
+  items: z.array(
+    z.object({
+      label: z.string(),
+      value: z.string(),
+      description: z.string().optional()
+    })
+  )
+});
+
+const insightCardBlockSchema = z.object({
+  type: z.literal(UI_BLOCK_INSIGHT_CARD),
+  title: z.string().optional(),
+  content: z.string()
+});
+
+const suggestedActionsBlockSchema = z.object({
+  type: z.literal(UI_BLOCK_SUGGESTED_ACTIONS),
+  title: z.string().optional(),
+  actions: z.array(
+    z.object({
+      label: z.string(),
+      message: z.string()
+    })
+  )
+});
+
+const dataTableBlockSchema = z.object({
+  type: z.literal(UI_BLOCK_DATA_TABLE),
+  title: z.string().optional(),
+  data: z.object({
+    columns: z.array(uiBlockColumnSchema),
+    rows: z.array(z.record(z.string(), z.unknown()))
+  })
+});
+
+const uiBlockSchema = z.discriminatedUnion("type", [
+  metricSummaryBlockSchema,
+  insightCardBlockSchema,
+  suggestedActionsBlockSchema,
+  dataTableBlockSchema
+]);
+
+const uiBlocksParametersSchema = z.object({
+  uiBlockId: z.string().optional(),
+  blocks: z.array(uiBlockSchema)
 });
 
 const suggestions = [
@@ -94,6 +156,7 @@ export function CopilotKitPanel({ chart, onApplyAction, onApplyError }: CopilotK
     >
       <CopilotRuntimeContextBridge context={runtimeContext} />
       <ChartAgentProgressRenderer />
+      <ChartAgentUiBlocksRenderer />
       <ChartAgentActionRenderer onApplyAction={onApplyAction} onApplyError={onApplyError} />
       <CopilotSidebar
         agentId={CHART_AGENT_ID}
@@ -223,6 +286,102 @@ function ChartAgentProgressRenderer() {
   return null;
 }
 
+function ChartAgentUiBlocksRenderer() {
+  useRenderTool({
+    name: CHART_AGENT_UI_BLOCKS_TOOL,
+    parameters: uiBlocksParametersSchema,
+    render: ({ parameters, result }) => {
+      const payload = readUiBlocksPayload(result);
+      const blocks = payload?.blocks ?? parameters.blocks ?? [];
+      const uiBlockId = payload?.uiBlockId ?? parameters.uiBlockId;
+      return <ChatUiBlocks blocks={blocks} uiBlockId={uiBlockId} />;
+    }
+  });
+
+  return null;
+}
+
+function ChatUiBlocks({ blocks, uiBlockId }: { blocks: ChartAgentUiBlock[]; uiBlockId: string | undefined }) {
+  if (blocks.length === 0) return null;
+
+  return (
+    <section className="chat-ui-blocks" aria-label="生成式 UI" data-ui-block-id={uiBlockId}>
+      {blocks.map((block, index) => (
+        <ChatUiBlock block={block} key={`${block.type}-${index}`} />
+      ))}
+    </section>
+  );
+}
+
+function ChatUiBlock({ block }: { block: ChartAgentUiBlock }) {
+  if (block.type === UI_BLOCK_METRIC_SUMMARY) {
+    return (
+      <article className="chat-ui-card">
+        <h3>{block.title ?? "指标摘要"}</h3>
+        <dl className="chat-ui-summary-grid">
+          {block.items.map((item) => (
+            <div className="chat-ui-summary-item" key={`${item.label}-${item.value}`}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+              {item.description ? <p>{item.description}</p> : null}
+            </div>
+          ))}
+        </dl>
+      </article>
+    );
+  }
+
+  if (block.type === UI_BLOCK_INSIGHT_CARD) {
+    return (
+      <article className="chat-ui-card">
+        <h3>{block.title ?? "图表洞察"}</h3>
+        <p className="chat-ui-insight">{block.content}</p>
+      </article>
+    );
+  }
+
+  if (block.type === UI_BLOCK_SUGGESTED_ACTIONS) {
+    return (
+      <article className="chat-ui-card">
+        <h3>{block.title ?? "建议操作"}</h3>
+        <div className="chat-ui-action-list">
+          {block.actions.map((action) => (
+            <span className="chat-ui-action-chip" key={`${action.label}-${action.message}`} title={action.message}>
+              {action.label}
+            </span>
+          ))}
+        </div>
+      </article>
+    );
+  }
+
+  return (
+    <article className="chat-ui-card">
+      <h3>{block.title ?? "数据明细"}</h3>
+      <div className="chat-ui-table-wrap">
+        <table className="chat-ui-table">
+          <thead>
+            <tr>
+              {block.data.columns.map((column) => (
+                <th key={column.key}>{column.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {block.data.rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {block.data.columns.map((column) => (
+                  <td key={column.key}>{formatCellValue(row[column.key])}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  );
+}
+
 function ChatProgressSteps({
   progressId,
   status,
@@ -287,6 +446,14 @@ function readActionPayload(result: unknown): { actionId?: string; action: ChartA
   };
 }
 
+function readUiBlocksPayload(result: unknown): { uiBlockId?: string; blocks: ChartAgentUiBlock[] } | null {
+  if (!result) return null;
+
+  const parsed = typeof result === "string" ? safeJsonParse(result) : result;
+  const validation = uiBlocksParametersSchema.safeParse(parsed);
+  return validation.success ? (validation.data as { uiBlockId?: string; blocks: ChartAgentUiBlock[] }) : null;
+}
+
 function isChartAgentAction(value: unknown): value is ChartAgentAction {
   if (!value || typeof value !== "object") return false;
 
@@ -301,6 +468,14 @@ function isChartAgentAction(value: unknown): value is ChartAgentAction {
     return typeof action.message === "string" && typeof action.code === "string";
   }
   return false;
+}
+
+function formatCellValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return JSON.stringify(value);
 }
 
 function safeJsonParse(value: string): unknown {

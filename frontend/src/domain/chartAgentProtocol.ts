@@ -1,9 +1,10 @@
-export const APP_VERSION = "0.11.22";
+export const APP_VERSION = "0.11.23";
 
 export const CHART_AGENT_ID = "chart-agent";
 
 export const CHART_AGENT_ACTION_TOOL = "chartAgentAction";
 export const CHART_AGENT_PROGRESS_TOOL = "chartAgentProgress";
+export const CHART_AGENT_UI_BLOCKS_TOOL = "chartAgentUiBlocks";
 
 export const COPILOT_TOOL_CALL_ARGS_EVENT = "TOOL_CALL_ARGS";
 export const COPILOT_TOOL_CALL_RESULT_EVENT = "TOOL_CALL_RESULT";
