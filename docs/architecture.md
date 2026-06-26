@@ -53,6 +53,14 @@ The backend returns `ChartAgentAction` values such as:
 
 The frontend applies these actions only after validation. `ChartPatch` should be narrower than `Partial<ChartSpec>` and must not allow unknown fields or chart ID mutation.
 
+## Generative UI Direction
+
+The project will evolve toward controlled generative UI. The model and backend agent must not generate executable React code, arbitrary HTML, or arbitrary ECharts options. Instead, the backend may return validated `uiBlocks` alongside `ChartAgentAction`.
+
+`ChartAgentAction` remains the only protocol that can mutate chart state. `uiBlocks` are display-only enhancements for summaries, insights, suggested actions, and lightweight supporting views. React renders them through a whitelist of components, preferably inside CopilotKit messages via `useRenderTool`.
+
+Detailed design: [Controlled Generative UI Design](generative-ui-design.md).
+
 ## Production Risks
 
 - Weak metric catalog design can cause unstable or invalid data queries.

@@ -144,3 +144,8 @@ npm.cmd run check:text
 ## 更新日志
 
 项目变更记录在 [CHANGELOG.md](CHANGELOG.md)。新增版本记录时请遵循其中定义的中文模块分组格式。
+## 生成式 UI 规划
+
+项目后续会沿“受控生成式 UI”方向演进：后端 Agent 生成结构化 `uiBlocks`，前端通过白名单组件和 CopilotKit `useRenderTool` 渲染动态 UI。图表状态变更仍然只通过 `ChartAgentAction` 完成。
+
+详细设计见 [docs/generative-ui-design.md](docs/generative-ui-design.md)。
