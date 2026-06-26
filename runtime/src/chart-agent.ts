@@ -17,6 +17,7 @@ import {
   ACTION_CREATE_CHART,
   ACTION_ERROR,
   ACTION_UPDATE_CHART,
+  CHART_AGENT_UI_BLOCK_TYPES,
   CHART_AGENT_ACTION_TOOL,
   CHART_AGENT_BACKEND_CHAT_PATH,
   CHART_AGENT_CONTEXT_KEY,
@@ -43,6 +44,21 @@ type ChartAgentResponse = {
     chartId?: string;
     patch?: unknown;
     code?: string;
+  };
+  uiBlocks?: ChartAgentUiBlock[];
+};
+
+type ChartAgentUiBlockType = (typeof CHART_AGENT_UI_BLOCK_TYPES)[number];
+
+type ChartAgentUiBlock = {
+  type: ChartAgentUiBlockType;
+  title?: string;
+  items?: Array<{ label: string; value: string; description?: string }>;
+  content?: string;
+  actions?: Array<{ label: string; message: string }>;
+  data?: {
+    columns: unknown[];
+    rows: Record<string, unknown>[];
   };
 };
 

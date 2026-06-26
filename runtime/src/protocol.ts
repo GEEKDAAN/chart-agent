@@ -23,6 +23,18 @@ export const INTENT_UPDATE_STYLE = "update_style";
 export const INTENT_UPDATE_DATA = "update_data";
 export const INTENT_CHANGE_CHART_TYPE = "change_chart_type";
 
+export const UI_BLOCK_METRIC_SUMMARY = "metric_summary";
+export const UI_BLOCK_INSIGHT_CARD = "insight_card";
+export const UI_BLOCK_SUGGESTED_ACTIONS = "suggested_actions";
+export const UI_BLOCK_DATA_TABLE = "data_table";
+
+export const CHART_AGENT_UI_BLOCK_TYPES = [
+  UI_BLOCK_METRIC_SUMMARY,
+  UI_BLOCK_INSIGHT_CARD,
+  UI_BLOCK_SUGGESTED_ACTIONS,
+  UI_BLOCK_DATA_TABLE
+] as const;
+
 export const CHART_AGENT_BACKEND_CHAT_PATH = "/chart-agent/chat";
 export const CHART_AGENT_CONTEXT_KEY = "chartAgentContext";
 export const CHART_AGENT_CONTEXT_MARKER_PREFIX = "<!-- chart-agent-context:";

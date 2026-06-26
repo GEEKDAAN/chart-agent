@@ -1,4 +1,4 @@
-export const APP_VERSION = "0.11.21";
+export const APP_VERSION = "0.11.22";
 
 export const CHART_AGENT_ID = "chart-agent";
 
@@ -65,6 +65,18 @@ export const INTENTS = [
   INTENT_CHANGE_CHART_TYPE,
   INTENT_EXPLAIN_CHART,
   INTENT_UNKNOWN
+] as const;
+
+export const UI_BLOCK_METRIC_SUMMARY = "metric_summary";
+export const UI_BLOCK_INSIGHT_CARD = "insight_card";
+export const UI_BLOCK_SUGGESTED_ACTIONS = "suggested_actions";
+export const UI_BLOCK_DATA_TABLE = "data_table";
+
+export const CHART_AGENT_UI_BLOCK_TYPES = [
+  UI_BLOCK_METRIC_SUMMARY,
+  UI_BLOCK_INSIGHT_CARD,
+  UI_BLOCK_SUGGESTED_ACTIONS,
+  UI_BLOCK_DATA_TABLE
 ] as const;
 
 export const DEFAULT_PAGE_CONTEXT = { source: "copilotkit" } as const;

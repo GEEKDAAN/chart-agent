@@ -33,6 +33,24 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.22] - 2026-06-26
+
+- 【后端】：
+  1. 新增 `uiBlocks` 响应协议模型和 `backend/app/domain/ui_blocks.py` 常量入口，覆盖指标摘要、洞察卡片、建议操作和轻量明细表四类受控 UI Block。
+  2. `ChartAgentResponse` 新增可选扩展字段 `uiBlocks`，当前默认返回空数组，不改变现有图表生成、编辑和问答行为。
+  3. 新增 UI Block schema 测试，校验非法 block type 和缺失必要 payload 会被拒绝。
+
+- 【前端】：
+  1. 新增 UI Block 类型和常量定义，为后续白名单渲染器做准备。
+  2. 本阶段只识别协议类型，不渲染 UI Blocks。
+
+- 【Runtime】：
+  1. 新增 UI Block 类型常量和后端响应类型扩展。
+  2. 本阶段不新增 `chartAgentUiBlocks` 工具事件，保持 CopilotKit 行为不变。
+
+- 【工程】：
+  1. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.22`。
+
 ## [0.11.21] - 2026-06-26
 
 - 【文档】：

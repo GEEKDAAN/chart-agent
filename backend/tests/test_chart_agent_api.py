@@ -16,6 +16,7 @@ def test_create_chart_returns_chart_action():
     assert body["action"]["chart"]["chartType"] == "bar"
     assert body["action"]["chart"]["encoding"]["x"] == "channel"
     assert body["action"]["chart"]["encoding"]["y"] == "sales"
+    assert body["uiBlocks"] == []
 
 
 def test_update_style_returns_patch_without_data_query():
