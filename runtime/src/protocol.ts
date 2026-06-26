@@ -2,6 +2,7 @@ export const CHART_AGENT_ID = "chart-agent";
 
 export const CHART_AGENT_ACTION_TOOL = "chartAgentAction";
 export const CHART_AGENT_PROGRESS_TOOL = "chartAgentProgress";
+export const CHART_AGENT_UI_BLOCKS_TOOL = "chartAgentUiBlocks";
 
 export const AGUI_RUN_STARTED_EVENT = "RUN_STARTED";
 export const AGUI_RUN_FINISHED_EVENT = "RUN_FINISHED";

@@ -24,6 +24,7 @@ import {
   CHART_AGENT_CONTEXT_MARKER_PREFIX,
   CHART_AGENT_ID,
   CHART_AGENT_PROGRESS_TOOL,
+  CHART_AGENT_UI_BLOCKS_TOOL,
   DEFAULT_BACKEND_URL,
   DEFAULT_PAGE_CONTEXT,
   DEFAULT_USER_CONTEXT,
@@ -93,6 +94,7 @@ export class ChartAgent extends AbstractAgent {
     const messageId = `msg-${crypto.randomUUID()}`;
     const progressToolCallId = `progress-${crypto.randomUUID()}`;
     const actionToolCallId = `action-${crypto.randomUUID()}`;
+    const uiBlockToolCallId = `ui-blocks-${crypto.randomUUID()}`;
     let progressToolStarted = false;
     let progressIntent = INTENT_CREATE_CHART;
 
@@ -118,6 +120,7 @@ export class ChartAgent extends AbstractAgent {
         progressToolStarted = true;
       });
       emitActionEvent(subscriber, messageId, actionToolCallId, chartResponse);
+      emitUiBlocksEvent(subscriber, messageId, uiBlockToolCallId, chartResponse.uiBlocks);
 
       subscriber.next({
         type: AGUI_TEXT_MESSAGE_CONTENT_EVENT,
@@ -250,6 +253,38 @@ function emitActionEvent(
     messageId: `tool-result-${toolCallId}-1`,
     toolCallId,
     content: JSON.stringify({ actionId: toolCallId, action: response.action }),
+    role: "tool",
+    timestamp: 0
+  } as BaseEvent);
+  subscriber.next({
+    type: AGUI_TOOL_CALL_END_EVENT,
+    toolCallId,
+    timestamp: 0
+  } as BaseEvent);
+}
+
+function emitUiBlocksEvent(
+  subscriber: { next: (event: BaseEvent) => void },
+  messageId: string,
+  toolCallId: string,
+  uiBlocks: ChartAgentUiBlock[] | undefined
+) {
+  if (!uiBlocks || uiBlocks.length === 0) return;
+
+  const payload = { uiBlockId: toolCallId, blocks: uiBlocks };
+  subscriber.next({
+    type: AGUI_TOOL_CALL_START_EVENT,
+    toolCallId,
+    toolCallName: CHART_AGENT_UI_BLOCKS_TOOL,
+    parentMessageId: messageId,
+    rawEvent: { parameters: payload },
+    timestamp: 0
+  } as BaseEvent);
+  subscriber.next({
+    type: AGUI_TOOL_CALL_RESULT_EVENT,
+    messageId: `tool-result-${toolCallId}-1`,
+    toolCallId,
+    content: JSON.stringify(payload),
     role: "tool",
     timestamp: 0
   } as BaseEvent);

@@ -10,7 +10,8 @@ import {
   ACTION_UPDATE_CHART,
   CHART_AGENT_ACTION_TOOL,
   CHART_AGENT_CONTEXT_KEY,
-  CHART_AGENT_PROGRESS_TOOL
+  CHART_AGENT_PROGRESS_TOOL,
+  CHART_AGENT_UI_BLOCKS_TOOL
 } from "../src/protocol.js";
 
 type FetchCall = {
@@ -107,6 +108,73 @@ test("does not emit progress or action tools for current chart questions", async
   assertNoToolStarted(events, CHART_AGENT_PROGRESS_TOOL);
   assertNoToolStarted(events, CHART_AGENT_ACTION_TOOL);
   assertTextContains(events, "当前图表包含抖音、小红书、微信、天猫。");
+});
+
+test("emits ui blocks tool event when backend returns generated ui blocks", async (t) => {
+  const fetchCalls: FetchCall[] = [];
+  mockFetch(t, fetchCalls, {
+    conversationId: "thread-ui-blocks",
+    intent: ACTION_CREATE_CHART,
+    action: {
+      type: ACTION_CREATE_CHART,
+      message: "已生成图表。",
+      chart: { chartType: "bar", title: "销售额" },
+      chartId: "chart-ui-blocks"
+    },
+    uiBlocks: [
+      {
+        type: "insight_card",
+        title: "主要洞察",
+        content: "抖音渠道销售额最高。"
+      }
+    ]
+  });
+
+  const events = await runAgent({
+    threadId: "thread-ui-blocks",
+    runId: "run-ui-blocks",
+    messages: [{ id: "m1", role: "user", content: "近30天各销售渠道的销售额" }]
+  });
+
+  assert.equal(fetchCalls.length, 1);
+  assertToolStarted(events, CHART_AGENT_PROGRESS_TOOL);
+  assertToolStarted(events, CHART_AGENT_ACTION_TOOL);
+  assertToolStarted(events, CHART_AGENT_UI_BLOCKS_TOOL);
+  const uiBlocksResult = parseToolResult(events, CHART_AGENT_UI_BLOCKS_TOOL);
+  assert.equal(uiBlocksResult.uiBlockId.startsWith("ui-blocks-"), true);
+  assert.deepEqual(uiBlocksResult.blocks, [
+    {
+      type: "insight_card",
+      title: "主要洞察",
+      content: "抖音渠道销售额最高。"
+    }
+  ]);
+});
+
+test("does not emit ui blocks tool event when backend returns empty ui blocks", async (t) => {
+  const fetchCalls: FetchCall[] = [];
+  mockFetch(t, fetchCalls, {
+    conversationId: "thread-empty-ui-blocks",
+    intent: ACTION_CREATE_CHART,
+    action: {
+      type: ACTION_CREATE_CHART,
+      message: "已生成图表。",
+      chart: { chartType: "bar", title: "销售额" },
+      chartId: "chart-empty-ui-blocks"
+    },
+    uiBlocks: []
+  });
+
+  const events = await runAgent({
+    threadId: "thread-empty-ui-blocks",
+    runId: "run-empty-ui-blocks",
+    messages: [{ id: "m1", role: "user", content: "近30天各销售渠道的销售额" }]
+  });
+
+  assert.equal(fetchCalls.length, 1);
+  assertToolStarted(events, CHART_AGENT_PROGRESS_TOOL);
+  assertToolStarted(events, CHART_AGENT_ACTION_TOOL);
+  assertNoToolStarted(events, CHART_AGENT_UI_BLOCKS_TOOL);
 });
 
 test("returns readable error events when backend request fails", async () => {

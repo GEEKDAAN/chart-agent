@@ -33,6 +33,18 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.24] - 2026-06-26
+
+- 【Runtime】：
+  1. 新增 `chartAgentUiBlocks` CopilotKit 工具事件发送能力，当后端响应包含非空 `uiBlocks` 时发送 `TOOL_CALL_START`、`TOOL_CALL_RESULT` 和 `TOOL_CALL_END`。
+  2. 工具事件内容采用 `{ uiBlockId, blocks }` 结构，与前端 `useRenderTool(chartAgentUiBlocks)` 渲染器保持一致。
+  3. `uiBlocks` 为空或缺失时不发送生成式 UI 工具事件，避免普通问答或无洞察响应出现空卡片。
+
+- 【工程】：
+  1. 新增 Runtime 单测覆盖非空 `uiBlocks` 会触发工具事件、空 `uiBlocks` 不触发工具事件。
+  2. 保持 `chartAgentAction` 和 `chartAgentProgress` 现有行为不变，本阶段只打通生成式 UI 的 Runtime 事件链路。
+  3. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.24`。
+
 ## [0.11.23] - 2026-06-26
 
 - 【前端】：
