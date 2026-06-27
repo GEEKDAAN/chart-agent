@@ -33,13 +33,20 @@ test("CopilotKit sidebar can generate and update a chart with streamed structure
   await expect(page.locator(".workspace").getByText("执行步骤")).toHaveCount(0);
   await expect(page.locator("textarea")).toBeVisible();
 
-  await sendPrompt(page, "近30天各销售渠道的销售额");
+  const createResult = await sendPrompt(page, "近30天各销售渠道的销售额");
   await expect(page.locator("canvas")).toHaveCount(1);
   await expect(page.locator(".chat-progress")).toBeVisible();
   await expect(page.locator(".chat-progress")).toContainText("执行步骤");
   await expect(page.locator(".chat-progress")).toContainText("识别图表需求");
   await expect(page.locator(".chat-progress")).toContainText("同步到前端");
   await expect(page.locator(".chat-progress")).toContainText("已完成");
+  const uiBlocks = toolResultByName(createResult.events, "chartAgentUiBlocks");
+  expect(uiBlocks?.blocks?.map((block: Record<string, unknown>) => block.type)).toEqual([
+    "metric_summary",
+    "insight_card",
+    "suggested_actions"
+  ]);
+  await expect(page.locator(".chat-ui-blocks")).toBeVisible();
 
   await sendPrompt(page, "换成折线图");
   await expect(page.locator(".chat-progress").last()).toContainText("识别图表类型");
@@ -117,6 +124,7 @@ test("CopilotKit separates new chart requests from current chart questions", asy
   const progressCountBeforeQuestion = await page.locator(".chat-progress").count();
   const questionResult = await sendPrompt(page, "有哪些渠道？", { expectProgress: false });
   expect(toolResultByName(questionResult.events, "chartAgentAction")).toBeUndefined();
+  expect(toolResultByName(questionResult.events, "chartAgentUiBlocks")).toBeUndefined();
   await expect(page.locator(".chat-progress")).toHaveCount(progressCountBeforeQuestion);
   await expect(page.getByText(/抖音.*小红书.*微信.*天猫/)).toBeVisible();
 });

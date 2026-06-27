@@ -33,6 +33,18 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.25] - 2026-06-26
+
+- 【后端】：
+  1. 新增 `services/ui_blocks.py`，从受控 `ChartSpec` 确定性生成指标摘要、主要洞察和建议操作三类 UI Blocks。
+  2. 创建图表成功后，`ChartAgentResponse.uiBlocks` 返回首批生成式 UI 展示内容；非创建图表动作继续返回空数组。
+  3. UI Blocks 只作为展示增强，不改变 `ChartAgentAction` 作为图表状态变更唯一协议的边界。
+
+- 【工程】：
+  1. 新增后端 UI Blocks 服务测试，覆盖创建图表生成 blocks、非创建动作不生成 blocks。
+  2. 更新 API 测试，验证创建图表响应包含 UI Blocks，当前图表问答不返回 UI Blocks。
+  3. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.25`。
+
 ## [0.11.24] - 2026-06-26
 
 - 【Runtime】：
