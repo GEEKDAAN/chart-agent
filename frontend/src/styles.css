@@ -231,12 +231,19 @@ textarea {
   display: inline-flex;
   min-height: 28px;
   align-items: center;
+  cursor: pointer;
   border: 1px solid #cbd5e1;
   border-radius: 999px;
   padding: 4px 10px;
   color: #40506a;
   background: #f7f9fc;
   font-size: 12px;
+}
+
+.chat-ui-action-chip:hover {
+  border-color: #2563eb;
+  color: #1d4ed8;
+  background: #eff6ff;
 }
 
 .chat-ui-table-wrap {

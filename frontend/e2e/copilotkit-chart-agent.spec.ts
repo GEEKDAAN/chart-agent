@@ -47,6 +47,9 @@ test("CopilotKit sidebar can generate and update a chart with streamed structure
     "suggested_actions"
   ]);
   await expect(page.locator(".chat-ui-blocks")).toBeVisible();
+  await page.getByRole("button", { name: "查看渠道" }).click();
+  await expect(page.getByText("有哪些渠道？").last()).toBeVisible();
+  await expect(page.getByText(/抖音.*小红书.*微信.*天猫/).last()).toBeVisible();
 
   await sendPrompt(page, "换成折线图");
   await expect(page.locator(".chat-progress").last()).toContainText("识别图表类型");
@@ -61,7 +64,7 @@ test("CopilotKit sidebar can generate and update a chart with streamed structure
   await sendPrompt(page, "解释一下这个图", { expectProgress: false });
   await expect(page.locator(".chat-progress")).toHaveCount(progressCountBeforeQuestion);
   await sendPrompt(page, "有哪些渠道？", { expectProgress: false });
-  await expect(page.getByText(/抖音.*小红书.*微信.*天猫/)).toBeVisible();
+  await expect(page.getByText(/抖音.*小红书.*微信.*天猫/).last()).toBeVisible();
   await sendPrompt(page, "抖音的销售额有多少？", { expectProgress: false });
   await expect(page.getByText(/168,000/)).toBeVisible();
 
@@ -71,31 +74,36 @@ test("CopilotKit sidebar can generate and update a chart with streamed structure
   expect(pageText).not.toContain("chart-agent-action");
   expect(pageText).not.toContain("chart-agent-step");
 
-  expect(agentRuns).toHaveLength(7);
+  expect(agentRuns).toHaveLength(8);
   expect(agentRuns[0]).toMatchObject({
     prompt: "近30天各销售渠道的销售额",
     hasCurrentChart: false,
     chartType: null
   });
   expect(agentRuns[1]).toMatchObject({
-    prompt: "换成折线图",
+    prompt: "有哪些渠道？",
     hasCurrentChart: true,
     chartType: "bar"
   });
   expect(agentRuns[2]).toMatchObject({
+    prompt: "换成折线图",
+    hasCurrentChart: true,
+    chartType: "bar"
+  });
+  expect(agentRuns[3]).toMatchObject({
     prompt: "把抖音改成红色",
     hasCurrentChart: true,
     chartType: "line"
   });
-  expect(agentRuns[4]).toMatchObject({
+  expect(agentRuns[5]).toMatchObject({
     prompt: "解释一下这个图",
     hasCurrentChart: true
   });
-  expect(agentRuns[5]).toMatchObject({
+  expect(agentRuns[6]).toMatchObject({
     prompt: "有哪些渠道？",
     hasCurrentChart: true
   });
-  expect(agentRuns[6]).toMatchObject({
+  expect(agentRuns[7]).toMatchObject({
     prompt: "抖音的销售额有多少？",
     hasCurrentChart: true
   });
@@ -126,7 +134,7 @@ test("CopilotKit separates new chart requests from current chart questions", asy
   expect(toolResultByName(questionResult.events, "chartAgentAction")).toBeUndefined();
   expect(toolResultByName(questionResult.events, "chartAgentUiBlocks")).toBeUndefined();
   await expect(page.locator(".chat-progress")).toHaveCount(progressCountBeforeQuestion);
-  await expect(page.getByText(/抖音.*小红书.*微信.*天猫/)).toBeVisible();
+  await expect(page.getByText(/抖音.*小红书.*微信.*天猫/).last()).toBeVisible();
 });
 
 type SendPromptResult = {
@@ -137,7 +145,7 @@ type SendPromptResult = {
 async function sendPrompt(
   page: import("@playwright/test").Page,
   prompt: string,
-  options: { expectProgress?: boolean } = {},
+  options: { expectProgress?: boolean } = {}
 ): Promise<SendPromptResult> {
   const expectProgress = options.expectProgress ?? true;
   const progressCount = await page.locator(".chat-progress").count();
@@ -158,7 +166,7 @@ async function sendPrompt(
 
   await page.locator("textarea").fill(prompt);
   await page.locator("button").last().click();
-  await expect(page.getByText(prompt)).toBeVisible();
+  await expect(page.getByText(prompt).last()).toBeVisible();
   const response = await responsePromise;
   const content = await response.text();
   const events = readSseEvents(content);
@@ -189,7 +197,7 @@ function readSseEvents(content: string): Record<string, any>[] {
         .split("\n")
         .filter((line) => line.startsWith("data:"))
         .map((line) => line.slice(5).trim())
-        .join("\n"),
+        .join("\n")
     )
     .filter(Boolean)
     .map((value) => {
@@ -206,7 +214,7 @@ function toolResultByName(events: Record<string, any>[], toolName: string): Reco
   const toolCallIds = new Set(
     events
       .filter((event) => event.type === "TOOL_CALL_START" && event.toolCallName === toolName)
-      .map((event) => event.toolCallId),
+      .map((event) => event.toolCallId)
   );
   const result = events.find((event) => event.type === "TOOL_CALL_RESULT" && toolCallIds.has(event.toolCallId));
   if (!result || typeof result.content !== "string") return undefined;

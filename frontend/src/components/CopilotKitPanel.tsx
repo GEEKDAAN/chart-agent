@@ -346,9 +346,15 @@ function ChatUiBlock({ block }: { block: ChartAgentUiBlock }) {
         <h3>{block.title ?? "建议操作"}</h3>
         <div className="chat-ui-action-list">
           {block.actions.map((action) => (
-            <span className="chat-ui-action-chip" key={`${action.label}-${action.message}`} title={action.message}>
+            <button
+              className="chat-ui-action-chip"
+              key={`${action.label}-${action.message}`}
+              onClick={() => submitCopilotMessage(action.message)}
+              title={action.message}
+              type="button"
+            >
               {action.label}
-            </span>
+            </button>
           ))}
         </div>
       </article>
@@ -476,6 +482,21 @@ function formatCellValue(value: unknown): string {
     return String(value);
   }
   return JSON.stringify(value);
+}
+
+function submitCopilotMessage(message: string): void {
+  const textarea = document.querySelector<HTMLTextAreaElement>("textarea");
+  if (!textarea) return;
+
+  const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+  valueSetter?.call(textarea, message);
+  textarea.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: message }));
+
+  window.setTimeout(() => {
+    const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("button")).filter((button) => !button.disabled);
+    const submitButton = buttons[buttons.length - 1];
+    submitButton?.click();
+  }, 0);
 }
 
 function safeJsonParse(value: string): unknown {
