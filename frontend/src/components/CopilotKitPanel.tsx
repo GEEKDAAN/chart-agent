@@ -27,6 +27,7 @@ import {
   UI_BLOCK_SUGGESTED_ACTIONS
 } from "../domain/chartAgentProtocol";
 import { copilotRuntimeUrl, isCopilotEnabled } from "../lib/config";
+import { submitCopilotChatMessage } from "../lib/copilotChatSubmit";
 import { useLatestChartAgentAction } from "../lib/chartAgentActionStore";
 import { useChartAgentProgress } from "../lib/chartAgentProgressStore";
 import {
@@ -349,7 +350,7 @@ function ChatUiBlock({ block }: { block: ChartAgentUiBlock }) {
             <button
               className="chat-ui-action-chip"
               key={`${action.label}-${action.message}`}
-              onClick={() => submitCopilotMessage(action.message)}
+              onClick={() => submitCopilotChatMessage(action.message)}
               title={action.message}
               type="button"
             >
@@ -482,21 +483,6 @@ function formatCellValue(value: unknown): string {
     return String(value);
   }
   return JSON.stringify(value);
-}
-
-function submitCopilotMessage(message: string): void {
-  const textarea = document.querySelector<HTMLTextAreaElement>("textarea");
-  if (!textarea) return;
-
-  const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
-  valueSetter?.call(textarea, message);
-  textarea.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: message }));
-
-  window.setTimeout(() => {
-    const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("button")).filter((button) => !button.disabled);
-    const submitButton = buttons[buttons.length - 1];
-    submitButton?.click();
-  }, 0);
 }
 
 function safeJsonParse(value: string): unknown {

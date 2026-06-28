@@ -33,6 +33,17 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.27] - 2026-06-28
+
+- 【前端】：
+  1. 新增 `copilotChatSubmit` helper，集中封装 suggested action 点击后填入并发送 CopilotKit 原生输入框的适配逻辑。
+  2. `CopilotKitPanel` 不再直接操作输入框 DOM，只负责渲染生成式 UI 和触发 helper。
+  3. 保持 suggested action 继续走自然语言请求链路，不引入前端业务执行工具。
+
+- 【工程】：
+  1. 沿用 Playwright E2E 覆盖点击“查看渠道”后的发送和当前图表问答链路。
+  2. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.27`。
+
 ## [0.11.26] - 2026-06-27
 
 - 【前端】：
