@@ -8,4 +8,3 @@
 2. [架构说明](../architecture.md)
 3. [受控生成式 UI 设计](../generative-ui-design.md)
 4. [本地开发指南](../local-development.md)
-

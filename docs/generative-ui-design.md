@@ -166,4 +166,3 @@ type ChartAgentUiBlocksPayload = {
 4. `0.11.24`：Runtime 新增 `chartAgentUiBlocks` 工具事件。
 5. `0.11.25`：后端生成图表后返回首批洞察 UI Blocks。
 6. 后续：接入真实 LLM 增强洞察文案，但必须保留 deterministic fallback。
-
