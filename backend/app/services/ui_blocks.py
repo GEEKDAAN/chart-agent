@@ -4,7 +4,12 @@ from app.domain.actions import ACTION_CREATE_CHART
 from app.domain.chart_types import CHART_TYPE_BAR, CHART_TYPE_LINE
 from app.domain.column_types import COLUMN_TYPE_CURRENCY, COLUMN_TYPE_NUMBER, COLUMN_TYPE_PERCENT
 from app.domain.dimensions import DIMENSION_CHANNEL
-from app.domain.ui_blocks import UI_BLOCK_INSIGHT_CARD, UI_BLOCK_METRIC_SUMMARY, UI_BLOCK_SUGGESTED_ACTIONS
+from app.domain.ui_blocks import (
+    UI_BLOCK_DATA_TABLE,
+    UI_BLOCK_INSIGHT_CARD,
+    UI_BLOCK_METRIC_SUMMARY,
+    UI_BLOCK_SUGGESTED_ACTIONS,
+)
 from app.schemas.chart import ChartAgentAction, ChartAgentUiBlock, ChartColumn, ChartSpec
 
 
@@ -52,6 +57,7 @@ def build_create_chart_ui_blocks(chart: ChartSpec) -> list[ChartAgentUiBlock]:
             title="主要洞察",
             content=_insight_text(chart, dimension_column, metric_column, numeric_rows),
         ),
+        ChartAgentUiBlock(type=UI_BLOCK_DATA_TABLE, title="数据明细", data=_data_table(chart)),
         ChartAgentUiBlock(type=UI_BLOCK_SUGGESTED_ACTIONS, title="建议操作", actions=_suggested_actions(chart)),
     ]
 
@@ -88,6 +94,13 @@ def _suggested_actions(chart: ChartSpec) -> list[dict[str, str]]:
     if _has_dimension_value(chart, "天猫"):
         actions.append({"label": "隐藏天猫", "message": "不要显示天猫"})
     return actions
+
+
+def _data_table(chart: ChartSpec) -> dict[str, Any]:
+    return {
+        "columns": chart.data.columns,
+        "rows": chart.data.rows[:8],
+    }
 
 
 def _dimension_key(chart: ChartSpec) -> str | None:

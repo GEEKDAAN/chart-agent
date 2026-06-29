@@ -44,9 +44,11 @@ test("CopilotKit sidebar can generate and update a chart with streamed structure
   expect(uiBlocks?.blocks?.map((block: Record<string, unknown>) => block.type)).toEqual([
     "metric_summary",
     "insight_card",
+    "data_table",
     "suggested_actions"
   ]);
   await expect(page.locator(".chat-ui-blocks")).toBeVisible();
+  await expect(page.locator(".chat-ui-table")).toContainText("销售额");
   await page.getByRole("button", { name: "查看渠道" }).click();
   await expect(page.getByText("有哪些渠道？").last()).toBeVisible();
   await expect(page.getByText(/抖音.*小红书.*微信.*天猫/).last()).toBeVisible();

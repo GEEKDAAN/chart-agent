@@ -16,9 +16,10 @@ def test_create_chart_returns_chart_action():
     assert body["action"]["chart"]["chartType"] == "bar"
     assert body["action"]["chart"]["encoding"]["x"] == "channel"
     assert body["action"]["chart"]["encoding"]["y"] == "sales"
-    assert [block["type"] for block in body["uiBlocks"]] == ["metric_summary", "insight_card", "suggested_actions"]
+    assert [block["type"] for block in body["uiBlocks"]] == ["metric_summary", "insight_card", "data_table", "suggested_actions"]
     assert body["uiBlocks"][0]["items"][0]["label"] == "数据行数"
     assert "最高" in body["uiBlocks"][1]["content"]
+    assert [column["key"] for column in body["uiBlocks"][2]["data"]["columns"]] == ["channel", "sales"]
 
 
 def test_update_style_returns_patch_without_data_query():
