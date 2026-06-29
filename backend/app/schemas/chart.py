@@ -33,6 +33,12 @@ from app.domain.intents import (
     TOOL_UPDATE_DATA,
     TOOL_UPDATE_STYLE,
 )
+from app.domain.ui_blocks import (
+    UI_BLOCK_DATA_TABLE,
+    UI_BLOCK_INSIGHT_CARD,
+    UI_BLOCK_METRIC_SUMMARY,
+    UI_BLOCK_SUGGESTED_ACTIONS,
+)
 
 ChartType = Literal[
     CHART_TYPE_BAR,
@@ -71,6 +77,12 @@ ChartAgentToolName = Literal[
     TOOL_OUT_OF_SCOPE,
 ]
 DecisionSource = Literal[DECISION_SOURCE_LLM, DECISION_SOURCE_FALLBACK]
+ChartAgentUiBlockType = Literal[
+    UI_BLOCK_METRIC_SUMMARY,
+    UI_BLOCK_INSIGHT_CARD,
+    UI_BLOCK_SUGGESTED_ACTIONS,
+    UI_BLOCK_DATA_TABLE,
+]
 
 
 class UserContext(BaseModel):
@@ -196,6 +208,51 @@ class ChartAgentAction(BaseModel):
         return self
 
 
+class MetricSummaryItem(BaseModel):
+    label: str
+    value: str
+    description: str | None = None
+
+    model_config = {"extra": "forbid"}
+
+
+class SuggestedAction(BaseModel):
+    label: str
+    message: str
+
+    model_config = {"extra": "forbid"}
+
+
+class DataTableBlockData(BaseModel):
+    columns: list[ChartColumn]
+    rows: list[dict[str, Any]]
+
+    model_config = {"extra": "forbid"}
+
+
+class ChartAgentUiBlock(BaseModel):
+    type: ChartAgentUiBlockType
+    title: str | None = None
+    items: list[MetricSummaryItem] | None = None
+    content: str | None = None
+    actions: list[SuggestedAction] | None = None
+    data: DataTableBlockData | None = None
+
+    model_config = {"extra": "forbid"}
+
+    @model_validator(mode="after")
+    def validate_block_payload(self) -> "ChartAgentUiBlock":
+        if self.type == UI_BLOCK_METRIC_SUMMARY and not self.items:
+            raise ValueError("metric_summary requires items")
+        if self.type == UI_BLOCK_INSIGHT_CARD and not self.content:
+            raise ValueError("insight_card requires content")
+        if self.type == UI_BLOCK_SUGGESTED_ACTIONS and not self.actions:
+            raise ValueError("suggested_actions requires actions")
+        if self.type == UI_BLOCK_DATA_TABLE and self.data is None:
+            raise ValueError("data_table requires data")
+        return self
+
+
 class ChartAgentDecision(BaseModel):
     intent: Intent
     toolName: ChartAgentToolName
@@ -209,3 +266,4 @@ class ChartAgentResponse(BaseModel):
     conversation_id: str = Field(alias="conversationId")
     intent: Intent
     action: ChartAgentAction
+    ui_blocks: list[ChartAgentUiBlock] = Field(default_factory=list, alias="uiBlocks")

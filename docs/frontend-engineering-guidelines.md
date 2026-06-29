@@ -104,3 +104,17 @@ npm.cmd run test:e2e
 ```
 
 新增 E2E 应优先覆盖用户真实连续流程，而不是只检查静态页面元素。
+## 生成式 UI 边界
+
+生成式 UI 采用受控 UI Blocks，而不是让 LLM 直接生成 React 代码。
+
+要求：
+
+- 前端只渲染白名单 `uiBlocks`。
+- `uiBlocks` 必须经过运行时校验后再渲染。
+- `uiBlocks` 只负责指标摘要、洞察、建议操作和辅助展示，不直接修改 `ChartSpec`。
+- 图表状态变更仍然只能通过 `ChartAgentAction` 和 `applyChartAction`。
+- suggested action 点击后应转成自然语言指令，继续走 CopilotKit / Runtime / Backend 链路。
+- 非法 block type 或非法 payload 应降级为不渲染，不能让页面崩溃。
+
+详细设计见 [受控生成式 UI 设计](generative-ui-design.md)。

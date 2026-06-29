@@ -61,6 +61,7 @@ from app.services.llm_decisions import (
 from app.services.data_requirements import parse_data_requirements
 from app.services.metrics import get_metric_catalog, query_metrics, validate_data_access
 from app.services.style_updates import color_label, resolve_style_updates
+from app.services.ui_blocks import build_chart_ui_blocks
 from app.services.visibility_updates import VisibilityUpdate, resolve_visibility_update
 
 QueryMetrics = Callable[[list[str], list[str], dict[str, Any] | None, dict[str, str] | None, int], ChartData]
@@ -94,6 +95,7 @@ def run_chart_agent(request: ChartAgentRequest, initial_decision: ChartAgentDeci
         conversationId=request.conversation_id,
         intent=final_state.get("intent", INTENT_UNKNOWN),
         action=action,
+        uiBlocks=final_state.get("ui_blocks", []),
     )
 
 
@@ -285,7 +287,8 @@ def validate_action_node(state: ChartAgentState) -> ChartAgentState:
 
 def respond_node(state: ChartAgentState) -> ChartAgentState:
     action = state.get("chart_action")
-    return {**state, "assistant_message": action.message if action else ""}
+    ui_blocks = build_chart_ui_blocks(action) if action else []
+    return {**state, "assistant_message": action.message if action else "", "ui_blocks": ui_blocks}
 
 
 def _resolve_data_requirements(state: ChartAgentState) -> DataRequirements:

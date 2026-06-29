@@ -33,6 +33,118 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.29] - 2026-06-29
+
+- 【文档】：
+  1. 重写 `README.md`，将其调整为面向公开展示的项目入口，补充项目亮点、架构图、本地启动、演示流程、测试命令和文档索引。
+  2. 将架构说明统一调整为中文文档，补充 CopilotKit 在当前架构中的具体职责和受控生成式 UI 协议边界。
+  3. 新增 `docs/public-showcase-checklist.md`，用于公开前检查密钥、临时文件、文档入口和当前限制。
+  4. 将 CopilotKit Runtime PoC、主线合并检查和合并评估文档归入 `docs/internal/`，减少公开文档入口噪音。
+  5. 同步更新 `backend/`、`frontend/` 和 `runtime/` 子目录 README，修正 Agent 节点、工具事件和受控生成式 UI 说明。
+  6. 新增公开展示截图 `docs/assets/chart-agent-showcase.png`，并在 README 中展示当前图表 Agent 与受控生成式 UI 效果。
+
+- 【工程】：
+  1. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.29`。
+
+## [0.11.28] - 2026-06-28
+
+- 【后端】：
+  1. 创建图表后新增 `data_table` UI Block，基于当前受控 `ChartSpec` 输出轻量数据明细。
+  2. 数据明细最多展示前 8 行，避免 CopilotKit 对话卡片过长。
+  3. `data_table` 仍只作为生成式 UI 展示增强，不参与图表状态变更。
+
+- 【工程】：
+  1. 更新后端 UI Blocks 服务测试和 API 测试，验证创建图表响应包含 `data_table`。
+  2. 更新 Playwright E2E，验证生成式 UI 中渲染数据明细表。
+  3. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.28`。
+
+## [0.11.27] - 2026-06-28
+
+- 【前端】：
+  1. 新增 `copilotChatSubmit` helper，集中封装 suggested action 点击后填入并发送 CopilotKit 原生输入框的适配逻辑。
+  2. `CopilotKitPanel` 不再直接操作输入框 DOM，只负责渲染生成式 UI 和触发 helper。
+  3. 保持 suggested action 继续走自然语言请求链路，不引入前端业务执行工具。
+
+- 【工程】：
+  1. 沿用 Playwright E2E 覆盖点击“查看渠道”后的发送和当前图表问答链路。
+  2. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.27`。
+
+## [0.11.26] - 2026-06-27
+
+- 【前端】：
+  1. 将生成式 UI 的 suggested action 从静态标签调整为可点击按钮。
+  2. 点击 suggested action 后复用 CopilotKit 原生输入框发送自然语言请求，继续走 CopilotKit -> Runtime -> 后端 Agent 链路。
+  3. 不新增普通聊天框，不注册业务型 `useFrontendTool`，避免形成第二条业务执行通道。
+
+- 【工程】：
+  1. 补充 Playwright E2E，验证点击“查看渠道”建议后会发送“有哪些渠道？”并基于当前图表回答。
+  2. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.26`。
+
+## [0.11.25] - 2026-06-26
+
+- 【后端】：
+  1. 新增 `services/ui_blocks.py`，从受控 `ChartSpec` 确定性生成指标摘要、主要洞察和建议操作三类 UI Blocks。
+  2. 创建图表成功后，`ChartAgentResponse.uiBlocks` 返回首批生成式 UI 展示内容；非创建图表动作继续返回空数组。
+  3. UI Blocks 只作为展示增强，不改变 `ChartAgentAction` 作为图表状态变更唯一协议的边界。
+
+- 【工程】：
+  1. 新增后端 UI Blocks 服务测试，覆盖创建图表生成 blocks、非创建动作不生成 blocks。
+  2. 更新 API 测试，验证创建图表响应包含 UI Blocks，当前图表问答不返回 UI Blocks。
+  3. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.25`。
+
+## [0.11.24] - 2026-06-26
+
+- 【Runtime】：
+  1. 新增 `chartAgentUiBlocks` CopilotKit 工具事件发送能力，当后端响应包含非空 `uiBlocks` 时发送 `TOOL_CALL_START`、`TOOL_CALL_RESULT` 和 `TOOL_CALL_END`。
+  2. 工具事件内容采用 `{ uiBlockId, blocks }` 结构，与前端 `useRenderTool(chartAgentUiBlocks)` 渲染器保持一致。
+  3. `uiBlocks` 为空或缺失时不发送生成式 UI 工具事件，避免普通问答或无洞察响应出现空卡片。
+
+- 【工程】：
+  1. 新增 Runtime 单测覆盖非空 `uiBlocks` 会触发工具事件、空 `uiBlocks` 不触发工具事件。
+  2. 保持 `chartAgentAction` 和 `chartAgentProgress` 现有行为不变，本阶段只打通生成式 UI 的 Runtime 事件链路。
+  3. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.24`。
+
+## [0.11.23] - 2026-06-26
+
+- 【前端】：
+  1. 新增 `chartAgentUiBlocks` 的 CopilotKit `useRenderTool` 渲染器，支持指标摘要、洞察卡片、建议操作和轻量明细表四类受控 UI Block。
+  2. 新增聊天消息内 UI Block 样式，保持与现有步骤面板一致的受控卡片视觉。
+  3. suggested action 当前只做展示，不直接触发图表修改，后续仍需通过自然语言请求链路执行。
+
+- 【工程】：
+  1. 本版本只新增前端白名单渲染能力；Runtime 暂不发送 `chartAgentUiBlocks` 事件，现有 CopilotKit 行为不变。
+  2. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.23`。
+
+## [0.11.22] - 2026-06-26
+
+- 【后端】：
+  1. 新增 `uiBlocks` 响应协议模型和 `backend/app/domain/ui_blocks.py` 常量入口，覆盖指标摘要、洞察卡片、建议操作和轻量明细表四类受控 UI Block。
+  2. `ChartAgentResponse` 新增可选扩展字段 `uiBlocks`，当前默认返回空数组，不改变现有图表生成、编辑和问答行为。
+  3. 新增 UI Block schema 测试，校验非法 block type 和缺失必要 payload 会被拒绝。
+
+- 【前端】：
+  1. 新增 UI Block 类型和常量定义，为后续白名单渲染器做准备。
+  2. 本阶段只识别协议类型，不渲染 UI Blocks。
+
+- 【Runtime】：
+  1. 新增 UI Block 类型常量和后端响应类型扩展。
+  2. 本阶段不新增 `chartAgentUiBlocks` 工具事件，保持 CopilotKit 行为不变。
+
+- 【工程】：
+  1. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.22`。
+
+## [0.11.21] - 2026-06-26
+
+- 【文档】：
+  1. 新增 `docs/generative-ui-design.md`，明确项目生成式 UI 采用受控 UI Blocks 路线。
+  2. 补充架构、CopilotKit 工具事件、前端工程规范和后端工程规范中的生成式 UI 边界。
+  3. 明确 `ChartAgentAction` 仍是图表状态变更的唯一协议，`uiBlocks` 只用于洞察、摘要、建议操作和辅助展示。
+
+- 【工程】：
+  1. 生成式 UI 文档阶段在 `codex/generative-ui` 分支进行，不直接在 `main` 上开发。
+  2. 本版本只做文档规划，不改变前后端协议和业务行为。
+  3. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.21`。
+
 ## [0.11.20] - 2026-06-26
 
 - 【后端】：

@@ -7,15 +7,16 @@ FastAPI 后端 MVP，提供图表 Agent 的协议模型、LangGraph workflow、m
 当前后端使用一个 `ChartAgent` graph，节点包括：
 
 ```text
-classify_intent
-  -> plan_data
-  -> query_data
-  -> generate_action
-  -> validate_action
+decide_tool
+  -> plan_data_if_needed
+  -> query_metrics_if_needed
+  -> generate_chart_action
+  -> validate_chart_action
+  -> build_ui_blocks_if_needed
   -> respond
 ```
 
-其中样式修改、图表类型切换和图表解释不会进入数据查询节点；创建图表和新增指标会通过 mock 指标服务查询数据。
+其中样式修改、图表类型切换、显示隐藏和当前图表问答不会进入数据查询节点；创建图表和新增指标会通过 mock 指标服务查询数据。
 
 ## 数据需求解析
 
@@ -55,7 +56,7 @@ OPENAI_MODEL=gpt-4o-mini
 OPENAI_BASE_URL=
 ```
 
-启用后，`generate_action` 节点会先尝试调用 LLM 生成 `ChartAgentAction`。如果未配置密钥、调用失败或输出校验失败，会自动回退到确定性生成逻辑。
+启用后，`decide_tool` 和 action 生成链路会优先尝试调用 LLM 输出结构化决策或 `ChartAgentAction`。如果未配置密钥、调用失败、低置信度或输出校验失败，会自动回退到确定性逻辑。
 
 后端优先使用 Responses API 的 JSON schema 输出；如果兼容服务不支持 Responses API，会回退到 Chat Completions 的 JSON object 输出。
 

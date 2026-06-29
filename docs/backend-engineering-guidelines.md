@@ -143,3 +143,23 @@ backend/tests/
 - 后端版本号在 `backend/app/main.py`。
 - 每个已验收版本必须更新 `CHANGELOG.md`。
 - 修改后端协议、意图、工具或 action 时，更新日志必须说明用户可感知影响和测试覆盖。
+## 生成式 UI 边界
+
+后端可以在后续版本返回受控 `uiBlocks`，用于指标摘要、洞察卡片、建议操作和辅助明细展示。
+
+要求：
+
+- `uiBlocks` 必须是结构化 JSON。
+- `uiBlocks` 必须经过 Pydantic/schema 校验。
+- block type 必须集中定义在 `domain/`。
+- LLM 不可用时应使用 deterministic fallback 生成基础摘要，或不返回 `uiBlocks`。
+- `uiBlocks` 不能绕过 `ChartAgentAction` 修改图表状态。
+
+禁止：
+
+- 返回 React 代码。
+- 返回任意 HTML。
+- 返回任意 ECharts option。
+- 在 `uiBlocks` 中携带未经校验的业务执行指令。
+
+详细设计见 [受控生成式 UI 设计](generative-ui-design.md)。

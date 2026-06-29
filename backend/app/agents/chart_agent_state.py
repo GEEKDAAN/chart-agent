@@ -1,6 +1,14 @@
 from typing import Any, NotRequired, TypedDict
 
-from app.schemas.chart import ChartAgentAction, ChartAgentDecision, ChartData, ChartSpec, Intent, UserContext
+from app.schemas.chart import (
+    ChartAgentAction,
+    ChartAgentDecision,
+    ChartAgentUiBlock,
+    ChartData,
+    ChartSpec,
+    Intent,
+    UserContext,
+)
 
 
 class DataRequirements(TypedDict):
@@ -21,5 +29,6 @@ class ChartAgentState(TypedDict):
     data_requirements: NotRequired[DataRequirements | None]
     queried_data: NotRequired[ChartData | None]
     chart_action: NotRequired[ChartAgentAction | None]
+    ui_blocks: NotRequired[list[ChartAgentUiBlock]]
     assistant_message: NotRequired[str]
     errors: NotRequired[list[str]]
