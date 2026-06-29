@@ -48,8 +48,8 @@ FastAPI 只保留图表业务接口，不再承载 CopilotKit Runtime。
 - `scripts/stop-dev.ps1`：三服务停止脚本。
 - `scripts/check-text-encoding.ps1`：中文编码检查脚本。
 - `docs/local-development.md`：三服务本地开发说明。
-- `docs/copilotkit-runtime-poc.md`：Runtime PoC 评估说明。
-- `docs/runtime-poc-merge-review.md`：合并前技术审查。
+- `docs/internal/copilotkit-runtime-poc.md`：Runtime PoC 评估说明。
+- `docs/internal/runtime-poc-merge-review.md`：合并前技术审查。
 
 ## 合并前必须确认
 

@@ -33,6 +33,19 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.29] - 2026-06-29
+
+- 【文档】：
+  1. 重写 `README.md`，将其调整为面向公开展示的项目入口，补充项目亮点、架构图、本地启动、演示流程、测试命令和文档索引。
+  2. 将架构说明统一调整为中文文档，补充 CopilotKit 在当前架构中的具体职责和受控生成式 UI 协议边界。
+  3. 新增 `docs/public-showcase-checklist.md`，用于公开前检查密钥、临时文件、文档入口和当前限制。
+  4. 将 CopilotKit Runtime PoC、主线合并检查和合并评估文档归入 `docs/internal/`，减少公开文档入口噪音。
+  5. 同步更新 `backend/`、`frontend/` 和 `runtime/` 子目录 README，修正 Agent 节点、工具事件和受控生成式 UI 说明。
+  6. 新增公开展示截图 `docs/assets/chart-agent-showcase.png`，并在 README 中展示当前图表 Agent 与受控生成式 UI 效果。
+
+- 【工程】：
+  1. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.29`。
+
 ## [0.11.28] - 2026-06-28
 
 - 【后端】：

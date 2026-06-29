@@ -24,14 +24,17 @@ VITE_COPILOT_RUNTIME_PROXY_URL=http://127.0.0.1:8014
 
 ## 工具渲染
 
-前端注册了两个 CopilotKit 工具渲染器：
+前端注册了三个 CopilotKit 工具渲染器：
 
 - `chartAgentProgress`：在 CopilotKit 原生聊天消息中渲染结构化步骤面板。
 - `chartAgentAction`：接收图表创建和修改动作，并调用 `applyChartAction` 更新图表。
+- `chartAgentUiBlocks`：在聊天消息中渲染受控生成式 UI，包括指标摘要、洞察、数据明细和建议操作。
 
 为了避免连续请求时当前图表上下文慢一拍，前端还会镜像监听 Runtime SSE 中的 `chartAgentAction` 工具结果，并通过 `actionId` 去重。
 
 当前实现不再使用 `chart-agent-step` 或 `chart-agent-action` 隐藏 marker。
+
+建议操作点击后仍然会发送自然语言请求，继续走 CopilotKit -> Runtime -> FastAPI Agent 链路，不在前端直接执行业务动作。
 
 ## 本地运行
 

@@ -1,61 +1,74 @@
 # chart-agent
 
-`chart-agent` 是一个对话式图表生成与编辑项目。用户用自然语言描述分析需求，后端 Agent 返回受控的 `ChartSpec`、`ChartPatch` 或 `ChartAgentAction`，前端校验后转换为 ECharts option 并渲染。
+`chart-agent` 是一个对话式图表 Agent 项目。用户通过自然语言描述分析需求，系统由后端 Agent 决策并生成受控图表动作，前端校验后渲染为 ECharts 图表，同时通过 CopilotKit 提供聊天入口、上下文传递和生成式 UI 展示。
 
-## 核心原则
+当前项目重点不是让大模型直接生成 React 代码，而是探索一种更可控的方式：**后端生成结构化协议，前端只渲染白名单能力**。
 
-- 模型只生成受控协议，不直接生成 React 组件。
-- 模型不直接生成任意 ECharts option。
-- Agent 不直接写 SQL，只能通过受控指标工具查询数据。
-- 前端负责 `ChartSpec` 校验、patch 合并、ECharts option 转换和渲染。
-- 每轮请求都携带当前 `ChartSpec`，支持“把这个改成红色”这类上下文指令。
+![chart-agent 生成图表与受控生成式 UI 展示](docs/assets/chart-agent-showcase.png)
+
+## 项目亮点
+
+- 自然语言生成图表：例如“近 30 天各渠道销售额”。
+- 上下文连续编辑：例如“把微信改成红色”“不要显示天猫”。
+- 当前图表问答：例如“有哪些渠道？”“抖音销售额是多少？”。
+- 受控生成式 UI：通过 `uiBlocks` 渲染指标摘要、洞察卡片、数据明细和建议操作。
+- CopilotKit 原生聊天入口：统一使用 `CopilotSidebar`，不额外维护普通聊天框。
+- 后端 Agent 主导业务决策：LLM 结果必须经过后端校验和 fallback。
+
+## 架构概览
+
+```mermaid
+flowchart LR
+  User["用户自然语言"] --> Frontend["frontend<br/>React + Vite + ECharts"]
+  Frontend --> Copilot["CopilotKit UI<br/>CopilotSidebar / useRenderTool"]
+  Copilot --> Runtime["runtime<br/>Node + CopilotKit Runtime SDK"]
+  Runtime --> Backend["backend<br/>FastAPI + LangGraph Agent"]
+  Backend --> Metrics["受控指标服务<br/>mock metrics"]
+  Backend --> Runtime
+  Runtime --> Copilot
+  Frontend --> Chart["ChartSpec -> ECharts option"]
+```
+
+三层职责边界：
+
+```text
+frontend/  图表状态、ECharts 渲染、CopilotKit 前端组件、受控 UI Blocks 渲染
+runtime/   CopilotKit Runtime 协议入口、上下文转发、AG-UI 工具事件
+backend/   意图决策、数据需求解析、指标查询、ChartAgentAction 生成与校验
+```
+
+## 核心边界
+
+- `ChartAgentAction` 是图表状态变更的唯一协议。
+- `uiBlocks` 只负责展示洞察、摘要、建议操作和辅助数据，不直接修改图表。
+- 前端不注册业务型 `useFrontendTool`，避免出现前后端两套执行通道。
+- 大模型不直接生成 React 组件、HTML、任意 ECharts option 或 SQL。
+- 每轮请求都携带当前图表上下文，支持连续问答和连续编辑。
 
 ## 技术栈
 
-- React + Vite
-- ECharts
-- FastAPI
-- LangGraph
-- OpenAI API 兼容接口，可选
-- CopilotKit 前端侧边栏
-- CopilotKit 官方 Runtime SDK，Node Runtime 服务
-- Python 语义指标层
+- 前端：React、Vite、TypeScript、ECharts、CopilotKit React UI
+- Runtime：Node.js、Express、官方 CopilotKit Runtime SDK
+- 后端：FastAPI、LangGraph、Pydantic
+- 测试：pytest、Node test runner、Playwright
+- LLM：兼容 OpenAI API 的服务，可通过环境变量开启；本地默认关闭以保证稳定验证
 
-## 目录结构
+## 本地启动
 
-```text
-backend/   FastAPI 图表业务接口、协议模型、LangGraph workflow、mock 指标查询
-runtime/   CopilotKit 官方 Runtime SDK 服务，负责 /copilotkit 入口
-frontend/  React 应用、CopilotKit 侧边栏、ChartSpec runtime、ECharts 渲染
-docs/      架构说明和设计文档
-scripts/   本地三服务启动和停止脚本
+准备环境变量：
+
+```powershell
+Copy-Item backend/.env.example backend/.env
+Copy-Item frontend/.env.example frontend/.env
 ```
 
-## 工程规范
-
-协作入口见 [AGENTS.md](AGENTS.md)。详细规范：
-
-- [后端工程规范](docs/backend-engineering-guidelines.md)
-- [前端工程规范](docs/frontend-engineering-guidelines.md)
-- [测试规范](docs/testing-guidelines.md)
-
-## 本地开发
-
-当前官方 CopilotKit Runtime 分支需要同时运行三个服务：
-
-- FastAPI：图表业务 Agent 后端。
-- Node Runtime：CopilotKit 官方 Runtime 协议适配层。
-- Vite：React 前端开发服务。
-
-推荐使用统一脚本启动：
+默认稳定模式启动，`CHART_AGENT_LLM_MODE=off`：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/dev.ps1
 ```
 
-默认使用 `CHART_AGENT_LLM_MODE=off`，适合稳定验收本地链路。
-
-使用真实大模型模式：
+真实大模型模式启动：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/dev.ps1 -LlmMode openai
@@ -67,85 +80,80 @@ powershell -ExecutionPolicy Bypass -File scripts/dev.ps1 -LlmMode openai
 powershell -ExecutionPolicy Bypass -File scripts/stop-dev.ps1
 ```
 
-默认访问地址：
+默认服务：
 
 ```text
-http://127.0.0.1:5184
+frontend  http://127.0.0.1:5184
+backend   http://127.0.0.1:8000
+runtime   http://127.0.0.1:8010
 ```
 
-详细说明见 [docs/local-development.md](docs/local-development.md)。
+详细说明见 [本地开发指南](docs/local-development.md)。
 
-CopilotKit 官方 Runtime SDK PoC 的合并前审查见 [docs/runtime-poc-merge-review.md](docs/runtime-poc-merge-review.md)。
+## 演示流程
 
-Runtime PoC 合并回主线前的操作清单见 [docs/main-merge-checklist.md](docs/main-merge-checklist.md)。
+可以按下面顺序验证核心能力：
 
-## 环境变量
+1. 输入“近 30 天各渠道销售额”，生成渠道销售额图表。
+2. 继续问“有哪些渠道？”，系统应基于当前图表回答，不重新生成图表。
+3. 继续问“抖音销售额是多少？”，系统应读取当前图表数据回答。
+4. 输入“把微信改成红色，天猫改成绿色”，系统应修改对应渠道样式。
+5. 输入“不要显示天猫”，系统应隐藏对应渠道，而不是回答销售额。
+6. 图表生成后，对话内应展示受控生成式 UI 卡片，例如指标摘要、洞察、建议操作和数据明细。
 
-后端本地配置放在 `backend/.env`，该文件已被 `.gitignore` 忽略。
+## 测试
 
-```text
-CHART_AGENT_LLM_MODE=off
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-5.5
-OPENAI_BASE_URL=https://ai.allrealai.com/v1
-```
-
-`CHART_AGENT_LLM_MODE=off` 用于稳定验证本地链路，避免外部 LLM 网络或额度影响联调。
-
-## 当前能力
-
-- 单图表生成
-- 单图表编辑
-- 受控 `ChartSpec` 协议
-- mock 指标目录和 mock 查询服务
-- 确定性数据需求解析
-- LangGraph 单 Agent workflow
-- 可选真实 LLM 结构化 action 生成
-- CopilotKit 前端侧边栏
-- CopilotKit 官方 Runtime SDK
-- `chartAgentProgress` 聊天内步骤面板
-- `chartAgentAction` 工具事件自动应用图表动作
-- 当前图表问答
-
-## 暂不包含
-
-- 多图 dashboard
-- 图表持久化和分享
-- 复杂下钻
-- 多图联动
-- FastAPI 原生 CopilotKit Runtime
-- Agent 直接写 SQL
-
-## 自动化测试
-
-前端端到端测试使用 Playwright，覆盖 CopilotKit 侧边栏、Runtime 请求、图表生成编辑和上下文传递链路。
+后端：
 
 ```powershell
-cd frontend
-npm.cmd run test:e2e
+cd backend
+python -m pytest -q
 ```
 
-测试默认以 `CHART_AGENT_LLM_MODE=off` 运行，避免外部 LLM 影响本地验证稳定性。
-
-Runtime 契约测试覆盖 CopilotKit/AG-UI 工具事件和后端代理协议：
+Runtime：
 
 ```powershell
 cd runtime
 npm.cmd run test
-```
-
-中文文案编码检查用于防止源码、测试和文档中再次出现乱码：
-
-```powershell
-cd runtime
+npm.cmd run build
 npm.cmd run check:text
 ```
 
-## 更新日志
+前端：
 
-项目变更记录在 [CHANGELOG.md](CHANGELOG.md)。新增版本记录时请遵循其中定义的中文模块分组格式。
-## 生成式 UI 规划
+```powershell
+cd frontend
+npm.cmd run build
+npm.cmd run test:e2e
+```
 
-项目后续会沿“受控生成式 UI”方向演进：后端 Agent 生成结构化 `uiBlocks`，前端通过白名单组件和 CopilotKit `useRenderTool` 渲染动态 UI。图表状态变更仍然只通过 `ChartAgentAction` 完成。
+## 文档索引
 
-详细设计见 [docs/generative-ui-design.md](docs/generative-ui-design.md)。
+- [架构说明](docs/architecture.md)
+- [受控生成式 UI 设计](docs/generative-ui-design.md)
+- [进度与工具事件协议](docs/progress-protocol.md)
+- [后端工程规范](docs/backend-engineering-guidelines.md)
+- [前端工程规范](docs/frontend-engineering-guidelines.md)
+- [测试规范](docs/testing-guidelines.md)
+- [公开展示检查清单](docs/public-showcase-checklist.md)
+- [更新日志](CHANGELOG.md)
+- [Agent 协作规则](AGENTS.md)
+
+内部演进、PoC 和合并检查类文档放在 [docs/internal](docs/internal/)。
+
+## 当前状态
+
+项目仍处于原型到可展示阶段之间，已经具备完整三服务链路、受控协议、基础图表生成编辑、当前图表问答和受控生成式 UI 卡片。当前数据源仍是 mock 指标服务，暂未接入真实业务数据库。
+
+暂不包含：
+
+- 多图 dashboard
+- 图表持久化和分享
+- 用户登录与权限系统
+- 真实指标平台或真实数据库查询
+- 生产级部署脚本
+- 完整 CI/CD
+
+## 公开说明
+
+本仓库适合用于展示对话式图表 Agent、CopilotKit Runtime 接入、后端 Agent 决策和受控生成式 UI 的实现思路。正式公开前建议确认许可证、演示截图、部署说明和真实密钥清理情况。

@@ -47,10 +47,11 @@ npm.cmd run test
 
 ## 工具事件
 
-Runtime 输出两个业务工具事件：
+Runtime 输出三个业务工具事件：
 
 - `chartAgentProgress`：执行步骤面板。
 - `chartAgentAction`：图表创建和修改动作。
+- `chartAgentUiBlocks`：受控生成式 UI 卡片，例如指标摘要、洞察、数据明细和建议操作。
 
 assistant 文本只保留自然语言回复，不再携带隐藏 `chart-agent-action` marker。
 

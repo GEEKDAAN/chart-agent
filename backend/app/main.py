@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers.chart_agent import router as chart_agent_router
 
-app = FastAPI(title="chart-agent API", version="0.11.28")
+app = FastAPI(title="chart-agent API", version="0.11.29")
 
 app.add_middleware(
     CORSMiddleware,
