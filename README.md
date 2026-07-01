@@ -84,8 +84,8 @@ powershell -ExecutionPolicy Bypass -File scripts/stop-dev.ps1
 
 ```text
 frontend  http://127.0.0.1:5184
-backend   http://127.0.0.1:8000
-runtime   http://127.0.0.1:8010
+backend   http://127.0.0.1:8004
+runtime   http://127.0.0.1:8014
 ```
 
 详细说明见 [本地开发指南](docs/local-development.md)。
@@ -135,6 +135,9 @@ npm.cmd run test:e2e
 - [后端工程规范](docs/backend-engineering-guidelines.md)
 - [前端工程规范](docs/frontend-engineering-guidelines.md)
 - [测试规范](docs/testing-guidelines.md)
+- [项目路线图](docs/roadmap.md)
+- [真实数据源接入设计](docs/real-data-source-design.md)
+- [代码质量评估](docs/code-quality-assessment.md)
 - [公开展示检查清单](docs/public-showcase-checklist.md)
 - [更新日志](CHANGELOG.md)
 - [Agent 协作规则](AGENTS.md)
@@ -156,4 +159,6 @@ npm.cmd run test:e2e
 
 ## 公开说明
 
-本仓库适合用于展示对话式图表 Agent、CopilotKit Runtime 接入、后端 Agent 决策和受控生成式 UI 的实现思路。正式公开前建议确认许可证、演示截图、部署说明和真实密钥清理情况。
+本仓库适合用于展示对话式图表 Agent、CopilotKit Runtime 接入、后端 Agent 决策和受控生成式 UI 的实现思路。当前暂未添加 `LICENSE`，公开后默认仅作为展示和学习参考；如需允许复用、分发或商用，需要先明确许可证。
+
+正式公开前建议确认 GitHub 仓库可见性、默认分支、README 展示效果、部署说明和真实密钥清理情况。
