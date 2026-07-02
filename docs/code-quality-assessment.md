@@ -49,12 +49,12 @@
 - `backend/app/services/chart_actions.py`：创建图表、更新样式、更新数据、切换图表类型和图表问答 action 构造。
 - `backend/app/services/action_errors.py`：错误 action 和节点错误状态辅助。
 
-当前 graph 入口已明显变轻，符合“agent 编排 workflow，service 承载业务逻辑”的边界。后续继续增加工具和图表类型时，建议进一步拆分 action 服务内部职责：
+当前 graph 入口已明显变轻，符合“agent 编排 workflow，service 承载业务逻辑”的边界。`0.11.34` 已继续拆分 action 服务内部职责：
 
-- `chart_updates.py`
-- `chart_explanations.py`
-- `chart_type_updates.py`
-- `chart_action_messages.py`
+- `chart_actions.py`：创建图表和会话类 action。
+- `chart_update_actions.py`：样式更新、数据更新和图表类型切换。
+- `chart_explanation_actions.py`：当前图表问答 action。
+- `chart_action_helpers.py`：当前图表校验、图表类型解析和标签解析。
 
 `0.11.33` 已将 `ChartAgentState` 和 `DataRequirements` 迁移到 `backend/app/schemas/agent_state.py`，避免 service 层继续依赖 `agents/` 包内类型。
 
@@ -98,7 +98,7 @@
 
 ## 优先治理顺序
 
-1. 继续细化 `chart_actions.py`，将样式更新、图表解释和类型切换拆成更小 service。
+1. 继续细化后端 action message 文案构造，减少业务动作和消息拼接耦合。
 2. 继续细化前端 `ui-blocks/ChatUiBlocks.tsx` 的组件边界。
 3. 优化 E2E `sendPrompt` helper，降低时序抖动。
 4. 抽象真实数据源适配器接口。

@@ -33,6 +33,17 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.34] - 2026-07-02
+
+- 【后端】：
+  1. 继续拆分 `chart_actions.py`，将图表更新 action 迁移到 `chart_update_actions.py`。
+  2. 将当前图表问答 action 迁移到 `chart_explanation_actions.py`。
+  3. 新增 `chart_action_helpers.py`，集中管理当前图表校验、图表类型解析和标签解析辅助函数。
+  4. 保持 Agent 节点调用语义和对外响应协议不变。
+
+- 【工程】：
+  1. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.34`。
+
 ## [0.11.33] - 2026-07-02
 
 - 【后端】：
