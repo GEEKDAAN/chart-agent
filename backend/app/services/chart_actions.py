@@ -1,4 +1,4 @@
-from app.agents.chart_agent_state import ChartAgentState
+﻿from app.schemas.agent_state import ChartAgentState
 from app.domain.actions import (
     ACTION_CREATE_CHART,
     ACTION_UPDATE_CHART,

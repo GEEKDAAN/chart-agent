@@ -1,4 +1,4 @@
-from app.agents.chart_agent_state import ChartAgentState
+﻿from app.schemas.agent_state import ChartAgentState
 from app.domain.intents import (
     CURRENT_CHART_TOOLS,
     DETERMINISTIC_EDIT_TOOLS,

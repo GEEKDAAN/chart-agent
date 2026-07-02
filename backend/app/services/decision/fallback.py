@@ -1,4 +1,4 @@
-from app.agents.chart_agent_state import ChartAgentState
+﻿from app.schemas.agent_state import ChartAgentState
 from app.domain.colors import STYLE_COLOR_TERMS
 from app.domain.decision_sources import DECISION_SOURCE_FALLBACK
 from app.domain.intents import (

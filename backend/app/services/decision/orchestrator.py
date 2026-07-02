@@ -1,6 +1,6 @@
-from collections.abc import Callable
+﻿from collections.abc import Callable
 
-from app.agents.chart_agent_state import ChartAgentState
+from app.schemas.agent_state import ChartAgentState
 from app.schemas.chart import ChartAgentDecision
 from app.services.decision.fallback import fallback_chart_agent_decision
 from app.services.decision.llm import generate_llm_decision

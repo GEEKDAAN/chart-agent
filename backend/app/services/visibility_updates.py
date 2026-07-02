@@ -1,7 +1,7 @@
-from dataclasses import dataclass
+﻿from dataclasses import dataclass
 from typing import Literal
 
-from app.agents.chart_agent_state import ChartAgentState
+from app.schemas.agent_state import ChartAgentState
 from app.domain.column_types import COLUMN_TYPE_STRING
 from app.domain.visibility import (
     VISIBILITY_HIDE,

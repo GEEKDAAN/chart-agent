@@ -1,6 +1,6 @@
-import pytest
+﻿import pytest
 
-from app.agents.chart_agent_state import ChartAgentState
+from app.schemas.agent_state import ChartAgentState
 from app.schemas.chart import (
     ChartAgentDecision,
     ChartColumn,

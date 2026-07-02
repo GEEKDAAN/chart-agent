@@ -1,8 +1,8 @@
-import re
+﻿import re
 from collections.abc import Iterable
 from datetime import date, timedelta
 
-from app.agents.chart_agent_state import DataRequirements
+from app.schemas.agent_state import DataRequirements
 from app.domain.dimensions import (
     CHANNEL_VALUES,
     DIMENSION_CHANNEL,

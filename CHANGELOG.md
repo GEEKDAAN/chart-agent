@@ -33,6 +33,16 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.33] - 2026-07-02
+
+- 【后端】：
+  1. 将 `ChartAgentState` 和 `DataRequirements` 从 `backend/app/agents/` 迁移到 `backend/app/schemas/agent_state.py`。
+  2. 更新后端 service、decision、agent 和测试导入，避免 service 层继续依赖 agent 包内类型。
+  3. 删除旧的 `backend/app/agents/chart_agent_state.py`，减少状态类型定义入口。
+
+- 【工程】：
+  1. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.33`。
+
 ## [0.11.32] - 2026-07-02
 
 - 【后端】：

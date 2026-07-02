@@ -1,4 +1,4 @@
-from app.agents.chart_agent_state import ChartAgentState
+﻿from app.schemas.agent_state import ChartAgentState
 from app.domain.colors import COLOR_HEX_TO_LABEL, COLOR_NAME_TO_HEX
 from app.schemas.chart import ChartSpec
 

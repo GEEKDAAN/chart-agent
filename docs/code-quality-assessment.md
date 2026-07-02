@@ -56,6 +56,8 @@
 - `chart_type_updates.py`
 - `chart_action_messages.py`
 
+`0.11.33` 已将 `ChartAgentState` 和 `DataRequirements` 迁移到 `backend/app/schemas/agent_state.py`，避免 service 层继续依赖 `agents/` 包内类型。
+
 ### 前端 CopilotKit 面板已完成初步拆分
 
 `0.11.31` 已将 `frontend/src/components/CopilotKitPanel.tsx` 中的主要职责拆分到 `frontend/src/components/copilot/`，包括：

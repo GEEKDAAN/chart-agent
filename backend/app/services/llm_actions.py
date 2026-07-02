@@ -1,7 +1,7 @@
-import json
+﻿import json
 from typing import Any
 
-from app.agents.chart_agent_state import ChartAgentState
+from app.schemas.agent_state import ChartAgentState
 from app.core.config import get_settings
 from app.domain.actions import ACTION_CREATE_CHART, ACTION_ERROR, ACTION_UPDATE_CHART, ALLOWED_ACTION_TYPES
 from app.schemas.chart import ChartAgentAction

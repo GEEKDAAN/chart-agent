@@ -1,4 +1,4 @@
-from app.agents.chart_agent_state import ChartAgentState
+﻿from app.schemas.agent_state import ChartAgentState
 from app.schemas.chart import ChartAgentDecision
 from app.services.decision.chart_questions import answer_current_chart_question
 from app.services.decision.fallback import fallback_chart_agent_decision

@@ -1,7 +1,7 @@
-import json
+﻿import json
 from typing import Any
 
-from app.agents.chart_agent_state import ChartAgentState
+from app.schemas.agent_state import ChartAgentState
 from app.core.config import get_settings
 from app.domain.decision_sources import DECISION_SOURCE_LLM
 from app.domain.intents import (

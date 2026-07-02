@@ -1,7 +1,7 @@
-from collections.abc import Callable
+﻿from collections.abc import Callable
 from typing import Any, Literal
 
-from app.agents.chart_agent_state import ChartAgentState, DataRequirements
+from app.schemas.agent_state import ChartAgentState, DataRequirements
 from app.domain.actions import (
     ERROR_CODE_AGENT_NO_ACTION,
     ERROR_CODE_CLARIFICATION_REQUIRED,

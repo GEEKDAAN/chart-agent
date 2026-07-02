@@ -1,4 +1,4 @@
-from langgraph.graph import END, StateGraph
+﻿from langgraph.graph import END, StateGraph
 
 from app.agents.chart_agent_nodes import (
     DecisionFn,
@@ -13,7 +13,7 @@ from app.agents.chart_agent_nodes import (
     route_after_planning,
     validate_action_node,
 )
-from app.agents.chart_agent_state import ChartAgentState
+from app.schemas.agent_state import ChartAgentState
 from app.domain.actions import ACTION_ERROR, ERROR_CODE_AGENT_NO_ACTION
 from app.domain.intents import INTENT_UNKNOWN
 from app.schemas.chart import (
