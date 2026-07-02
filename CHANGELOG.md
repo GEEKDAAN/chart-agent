@@ -33,6 +33,18 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.31] - 2026-07-01
+
+- 【前端】：
+  1. 拆分 `CopilotKitPanel`，将上下文桥接、action 渲染、progress 渲染、UI Blocks 渲染和 schema 校验迁移到 `frontend/src/components/copilot/`。
+  2. 保持 CopilotKit Provider、Sidebar、工具渲染、建议操作点击和图表 action 应用行为不变。
+
+- 【文档】：
+  1. 更新代码质量评估，标记前端 CopilotKit 面板初步拆分已完成，并调整后续治理优先级。
+
+- 【工程】：
+  1. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.31`。
+
 ## [0.11.30] - 2026-07-01
 
 - 【文档】：

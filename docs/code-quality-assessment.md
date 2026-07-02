@@ -59,9 +59,9 @@
 - `chart_explanations.py`
 - `workflow_nodes.py`
 
-### 前端 CopilotKit 面板偏重
+### 前端 CopilotKit 面板已完成初步拆分
 
-`frontend/src/components/CopilotKitPanel.tsx` 同时承担：
+`0.11.31` 已将 `frontend/src/components/CopilotKitPanel.tsx` 中的主要职责拆分到 `frontend/src/components/copilot/`，包括：
 
 - CopilotKit Provider。
 - Runtime context bridge。
@@ -71,13 +71,11 @@
 - UI Block 组件。
 - schema 校验。
 
-建议后续拆分：
+当前面板入口已明显变轻。后续仍可继续细化：
 
-- `CopilotKitPanel.tsx`
-- `ChartAgentActionRenderer.tsx`
-- `ChartAgentProgressRenderer.tsx`
-- `ChartAgentUiBlocksRenderer.tsx`
-- `ui-blocks/`
+- 将 `ui-blocks/ChatUiBlocks.tsx` 继续拆成 `MetricSummaryBlock`、`InsightCardBlock`、`DataTableBlock` 和 `SuggestedActionsBlock`。
+- 为 CopilotKit 工具 payload 解析补更细的前端单元测试。
+- 将建议操作发送适配逻辑纳入更稳定的 E2E helper。
 
 ### E2E 存在轻微时序抖动
 
@@ -101,8 +99,8 @@
 
 ## 优先治理顺序
 
-1. 拆分 `CopilotKitPanel.tsx`，降低前端工具渲染维护成本。
-2. 拆分 `chart_agent_graph.py` 中的 action 生成逻辑。
+1. 拆分 `chart_agent_graph.py` 中的 action 生成逻辑。
+2. 继续细化前端 `ui-blocks/ChatUiBlocks.tsx` 的组件边界。
 3. 优化 E2E `sendPrompt` helper，降低时序抖动。
 4. 抽象真实数据源适配器接口。
 5. 增加 CI，在项目更完善后自动运行单测、构建、文本检查和关键 E2E。
