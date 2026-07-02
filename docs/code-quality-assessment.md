@@ -40,24 +40,21 @@
 
 ## 主要风险
 
-### 后端 Agent graph 文件偏重
+### 后端 Agent 已完成初步拆分
 
-`backend/app/agents/chart_agent_graph.py` 同时包含：
+`0.11.32` 已将 `backend/app/agents/chart_agent_graph.py` 拆分为更清晰的边界：
 
 - LangGraph 编排。
-- 节点实现。
-- fallback action 生成。
-- 图表类型切换。
-- 样式修改。
-- 图表解释。
-- 错误 action 构造。
+- `backend/app/agents/chart_agent_nodes.py`：节点实现、路由判断、查询节点和响应节点。
+- `backend/app/services/chart_actions.py`：创建图表、更新样式、更新数据、切换图表类型和图表问答 action 构造。
+- `backend/app/services/action_errors.py`：错误 action 和节点错误状态辅助。
 
-短期可维护，但后续继续增加工具和图表类型时，建议拆成更小的 service：
+当前 graph 入口已明显变轻，符合“agent 编排 workflow，service 承载业务逻辑”的边界。后续继续增加工具和图表类型时，建议进一步拆分 action 服务内部职责：
 
-- `chart_actions.py`
 - `chart_updates.py`
 - `chart_explanations.py`
-- `workflow_nodes.py`
+- `chart_type_updates.py`
+- `chart_action_messages.py`
 
 ### 前端 CopilotKit 面板已完成初步拆分
 
@@ -99,7 +96,7 @@
 
 ## 优先治理顺序
 
-1. 拆分 `chart_agent_graph.py` 中的 action 生成逻辑。
+1. 继续细化 `chart_actions.py`，将样式更新、图表解释和类型切换拆成更小 service。
 2. 继续细化前端 `ui-blocks/ChatUiBlocks.tsx` 的组件边界。
 3. 优化 E2E `sendPrompt` helper，降低时序抖动。
 4. 抽象真实数据源适配器接口。

@@ -33,6 +33,17 @@
 - 修改或增强已有能力：`patch +1`，例如 `0.2.0 -> 0.2.1`。
 - 发生破坏性协议、API 或架构变化：`major +1`，例如 `0.9.0 -> 1.0.0`。
 
+## [0.11.32] - 2026-07-02
+
+- 【后端】：
+  1. 拆分 `chart_agent_graph.py`，将 LangGraph 节点实现迁移到 `backend/app/agents/chart_agent_nodes.py`。
+  2. 新增 `backend/app/services/chart_actions.py`，集中管理创建图表、更新样式、更新数据、切换图表类型和图表问答 action 构造。
+  3. 新增 `backend/app/services/action_errors.py`，统一错误 action 和节点错误状态辅助函数。
+  4. 保持 `build_chart_agent_graph`、`run_chart_agent` 和 `classify_intent` 外部入口不变，不改变现有业务行为。
+
+- 【工程】：
+  1. 更新前端、Runtime 和 FastAPI 版本号为 `0.11.32`。
+
 ## [0.11.31] - 2026-07-01
 
 - 【前端】：

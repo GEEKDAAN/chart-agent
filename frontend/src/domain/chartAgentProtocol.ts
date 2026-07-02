@@ -1,4 +1,4 @@
-export const APP_VERSION = "0.11.31";
+export const APP_VERSION = "0.11.32";
 
 export const CHART_AGENT_ID = "chart-agent";
 
